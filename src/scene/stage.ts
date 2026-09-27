@@ -21,6 +21,9 @@ export type DayView = { traces: HourState[][]; t: number; bloom: number } | null
 
 export class GardenScene {
   onTile: ((cell: Cell) => void) | null = null;
+  set onStep(fn: (() => void) | null) {
+    this.astronaut.onStep = fn;
+  }
   reduced: boolean;
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();

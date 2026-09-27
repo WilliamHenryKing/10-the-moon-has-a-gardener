@@ -1,13 +1,16 @@
 import gsap from "gsap";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { wiltsAtHour } from "../audio/cues";
+import type { AudioEngine } from "../audio/engine";
 import { LEVELS } from "../game/levels";
-import { growthTrace, HOURS, reportGarden } from "../game/rules";
+import { growthTrace, HOURS, reportGarden, togglePanel } from "../game/rules";
 import { initialState, levelOf, reduce } from "../game/state";
 import type { Cell } from "../game/types";
 import type { GardenScene } from "../scene/stage";
 import { EndingCard, Hint, ResultCard, TitleCard } from "./Cards";
-import { PlantList, SunControl, TopBar } from "./Hud";
+import { MuteButton, PlantList, SunControl, TopBar } from "./Hud";
 import { describeTile } from "./text";
+import { useGameAudio, useMuted } from "./useGameAudio";
 
 const HINT_KEY = "moon-gardener:hint-done";
 const readHintDone = (): boolean => {
@@ -18,7 +21,8 @@ const readHintDone = (): boolean => {
   }
 };
 
-export function App({ scene, reduced }: { scene: GardenScene; reduced: boolean }) {
+export function App(props: { scene: GardenScene; audio: AudioEngine; reduced: boolean }) {
+  const { scene, audio, reduced } = props;
   const [state, dispatch] = useReducer(reduce, undefined, initialState);
   const [dayT, setDayT] = useState(0);
   const [keyboard, setKeyboard] = useState(false);
@@ -27,6 +31,22 @@ export function App({ scene, reduced }: { scene: GardenScene; reduced: boolean }
   const level = levelOf(state);
   const reports = useMemo(() => reportGarden(level, state.panels), [level, state.panels]);
   const planning = state.phase === "plan";
+  const muted = useMuted(audio);
+  useGameAudio(audio, scene, state);
+
+  // A toggle the rules refuse (plant, rock, empty rover) gets a soft "no".
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const toggle = useCallback(
+    (cell: Cell) => {
+      const s = stateRef.current;
+      if (s.phase === "plan" && !togglePanel(levelOf(s), s.panels, cell)) {
+        audio.play("denied", { gain: 0.5 });
+      }
+      dispatch({ type: "toggle", cell });
+    },
+    [audio],
+  );
 
   const finishHint = useCallback(() => {
     setHint(null);
@@ -59,12 +79,12 @@ export function App({ scene, reduced }: { scene: GardenScene; reduced: boolean }
   useEffect(() => {
     scene.onTile = (cell: Cell) => {
       setKeyboard(false);
-      dispatch({ type: "toggle", cell });
+      toggle(cell);
     };
     return () => {
       scene.onTile = null;
     };
-  }, [scene]);
+  }, [scene, toggle]);
 
   // Advance the hint once the first panel stands.
   useEffect(() => {
@@ -76,7 +96,23 @@ export function App({ scene, reduced }: { scene: GardenScene; reduced: boolean }
     if (state.phase !== "growing" || !state.reports) return;
     const traces = state.reports.map((r) => growthTrace(r.plant.species, r.mask));
     const clock = { t: 0, bloom: 0 };
+    let heard = -1;
+    let bloomed = false;
     const push = () => {
+      const hour = Math.min(HOURS - 1, Math.floor(clock.t));
+      if (hour > heard && clock.t < HOURS) {
+        heard = hour;
+        audio.play("hour", { gain: 0.35, rate: 0.9 + hour * 0.05 });
+        for (const _ of wiltsAtHour(traces, hour)) audio.play("wilt", { gain: 0.45 });
+      }
+      if (clock.bloom > 0 && !bloomed) {
+        bloomed = true;
+        traces.forEach((t, i) => {
+          if (t[HOURS - 1]?.health === "growing") {
+            audio.play("bloom", { gain: 0.55, rate: 1 + i * 0.12, delay: i * 0.12 });
+          }
+        });
+      }
       scene.setDay({ traces, t: clock.t, bloom: clock.bloom });
       scene.setHour(clock.t);
       setDayT(clock.t);
@@ -89,13 +125,17 @@ export function App({ scene, reduced }: { scene: GardenScene; reduced: boolean }
     return () => {
       tl.kill();
     };
-  }, [state.phase, state.reports, scene, reduced]);
+  }, [state.phase, state.reports, scene, reduced, audio]);
 
   // Keyboard: arrows move the cursor, Enter/Space toggles, [ ] turn the Sun, G grows.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       const inControl = t?.closest("input, button, a, [role=dialog]") !== null;
+      if ((e.key === "m" || e.key === "M") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        audio.toggleMute();
+        return;
+      }
       if (state.phase !== "plan") return;
       const moves: Record<string, [number, number]> = {
         ArrowLeft: [-1, 0],
@@ -111,7 +151,7 @@ export function App({ scene, reduced }: { scene: GardenScene; reduced: boolean }
       } else if ((e.key === "Enter" || e.key === " ") && !inControl) {
         e.preventDefault();
         setKeyboard(true);
-        dispatch({ type: "toggle", cell: state.cursor });
+        toggle(state.cursor);
       } else if (e.key === "[" || e.key === "]") {
         dispatch({ type: "setHour", hour: (state.hour + (e.key === "]" ? 1 : 7)) % 8 });
       } else if ((e.key === "g" || e.key === "G") && !inControl) {
@@ -120,7 +160,7 @@ export function App({ scene, reduced }: { scene: GardenScene; reduced: boolean }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [state.phase, state.cursor, state.hour]);
+  }, [state.phase, state.cursor, state.hour, toggle, audio]);
 
   // Announce the cursor tile and walk the gardener there.
   useEffect(() => {
@@ -144,6 +184,7 @@ export function App({ scene, reduced }: { scene: GardenScene; reduced: boolean }
           panelsLeft={level.panels - state.panels.length}
           canClear={planning && state.panels.length > 0}
           onClear={() => dispatch({ type: "clear" })}
+          mute={<MuteButton muted={muted} onToggle={audio.toggleMute} />}
         />
       )}
       {hudVisible && (
@@ -152,6 +193,11 @@ export function App({ scene, reduced }: { scene: GardenScene; reduced: boolean }
         </div>
       )}
 
+      {!hudVisible && (
+        <div className="pointer-events-auto absolute top-3 right-3 sm:top-5 sm:right-5">
+          <MuteButton muted={muted} onToggle={audio.toggleMute} />
+        </div>
+      )}
       <div className="flex flex-1 items-center justify-center">
         {state.phase === "title" && <TitleCard onStart={() => dispatch({ type: "start" })} />}
         {state.phase === "ending" && (

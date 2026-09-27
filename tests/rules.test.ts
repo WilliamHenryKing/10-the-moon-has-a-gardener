@@ -133,3 +133,23 @@ describe("gardens", () => {
     expect(report[0]?.verdict).toBe("scorched");
   });
 });
+
+describe("sound cues", () => {
+  test("each failing plant gets one wilt cue, at the hour it fails", async () => {
+    const { wiltsAtHour } = await import("../src/audio/cues");
+    const scorch = growthTrace("nightbell", Array(8).fill(true)); // fails at hour 3
+    const fine = growthTrace("mooncress", [true, false, true, false, true, false, true, false]);
+    const traces = [scorch, fine];
+    const heard = Array.from({ length: HOURS }, (_, h) => wiltsAtHour(traces, h));
+    expect(heard[3]).toEqual([0]);
+    expect(heard.flat()).toEqual([0]);
+  });
+
+  test("every cue and loop names a file that ships in public/audio", async () => {
+    const { SFX, MUSIC, AMBIENCE } = await import("../src/audio/cues");
+    const { existsSync } = await import("node:fs");
+    for (const f of [...Object.values(SFX).flat(), MUSIC, AMBIENCE]) {
+      expect(existsSync(`public/audio/${f}`)).toBe(true);
+    }
+  });
+});

@@ -33,6 +33,8 @@ export class Astronaut {
   private target = new THREE.Vector3();
   private facing = 0;
   private phase = 0;
+  /** Called on each footfall, for footstep sounds. */
+  onStep: (() => void) | null = null;
   private kneel = 0;
   private kneelTimer = 0;
   private lookAt: THREE.Vector3 | null = null;
@@ -137,7 +139,9 @@ export class Astronaut {
       if (reduced) pos.copy(this.target);
       else pos.addScaledVector(toTarget.normalize(), Math.min(dist, dt * 2.2));
       this.facing = Math.atan2(this.target.x - pos.x, this.target.z - pos.z) || this.facing;
+      const before = Math.floor(this.phase / Math.PI);
       this.phase += dt * 9;
+      if (Math.floor(this.phase / Math.PI) !== before) this.onStep?.();
     } else {
       if (this.lookAt) this.facing = Math.atan2(this.lookAt.x - pos.x, this.lookAt.z - pos.z);
       if (this.kneelTimer > 0) this.kneelTimer -= dt;

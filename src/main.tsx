@@ -1,5 +1,6 @@
 import "./styles.css";
 import { createRoot } from "react-dom/client";
+import { AudioEngine } from "./audio/engine";
 import { worldReady } from "./loader";
 import { GardenScene } from "./scene/stage";
 import { App } from "./ui/App";
@@ -22,5 +23,9 @@ if (root) {
   root.appendChild(ui);
 
   const scene = new GardenScene(stage, reduced, worldReady);
-  createRoot(ui).render(<App scene={scene} reduced={reduced} />);
+  // Audio starts on the first gesture, as browsers require; later gestures resume it.
+  const audio = new AudioEngine();
+  window.addEventListener("pointerdown", audio.unlock, true);
+  window.addEventListener("keydown", audio.unlock, true);
+  createRoot(ui).render(<App scene={scene} audio={audio} reduced={reduced} />);
 }

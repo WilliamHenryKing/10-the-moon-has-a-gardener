@@ -15,6 +15,7 @@ export function TopBar(props: {
   panelsLeft: number;
   canClear: boolean;
   onClear: () => void;
+  mute: React.ReactNode;
 }) {
   const { level, index, panelsLeft } = props;
   return (
@@ -47,6 +48,7 @@ export function TopBar(props: {
         >
           Clear
         </button>
+        {props.mute}
       </div>
     </header>
   );
@@ -148,5 +150,21 @@ export function SunControl(props: {
         </button>
       </div>
     </div>
+  );
+}
+
+/** Persistent sound toggle (also the M key). */
+export function MuteButton({ muted, onToggle }: { muted: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className="btn btn-ghost glass px-3 text-sm"
+      aria-pressed={muted}
+      aria-label={muted ? "Sound off. Turn sound on (M)" : "Sound on. Mute (M)"}
+      title="Sound (M)"
+      onClick={onToggle}
+    >
+      <span aria-hidden>{muted ? "🔇" : "🔊"}</span>
+    </button>
   );
 }
