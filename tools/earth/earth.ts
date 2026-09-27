@@ -207,7 +207,11 @@ async function render(plate: Plate) {
   halo.rotation.y = spin;
   const phase = (plate.phase * Math.PI) / 180;
   const season = ((plate.season ?? -20) * Math.PI) / 180;
-  const sunWorld = new Vector3(Math.sin(phase) * Math.cos(season), Math.sin(season), Math.cos(phase) * Math.cos(season));
+  const sunWorld = new Vector3(
+    Math.sin(phase) * Math.cos(season),
+    Math.sin(season),
+    Math.cos(phase) * Math.cos(season),
+  );
   // Lighting runs in the sphere's own space.
   const toObject = (v: Vector3) => v.clone().applyAxisAngle(new Vector3(0, 1, 0), -spin);
   shared.sunObj.value.copy(toObject(sunWorld)).normalize();

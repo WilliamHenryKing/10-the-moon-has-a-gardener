@@ -15,7 +15,9 @@ const port = Number(opt("--port", "4710"));
 const playwright =
   process.env.STUDIO_PLAYWRIGHT ??
   "C:/Users/William King/AppData/Local/npm-cache/_npx/81fb41e6b6793dc6/node_modules/playwright/index.mjs";
-const magick = process.env.STUDIO_MAGICK ?? "C:/Users/William King/.codex/tools/visual/ImageMagick-7.1.2-31/magick.exe";
+const magick =
+  process.env.STUDIO_MAGICK ??
+  "C:/Users/William King/.codex/tools/visual/ImageMagick-7.1.2-31/magick.exe";
 const out = path.resolve("assets-src/renders/earth");
 mkdirSync(out, { recursive: true });
 mkdirSync("docs/visual/studio", { recursive: true });
@@ -34,13 +36,19 @@ const PHASES = [
 ];
 const plates = test
   ? [{ id: "test", lon: 20, phase: 50 }]
-  : LONGITUDES.flatMap(([place, lon]) => PHASES.map(([name, phase]) => ({ id: `${place}_${name}`, lon, phase })));
+  : LONGITUDES.flatMap(([place, lon]) =>
+      PHASES.map(([name, phase]) => ({ id: `${place}_${name}`, lon, phase })),
+    );
 
-const server = spawn("bunx", ["--no-install", "vite", "--config", "tools/studio/kit/vite.studio.mjs"], {
-  env: { ...process.env, STUDIO_PORT: String(port) },
-  shell: true,
-  stdio: "ignore",
-});
+const server = spawn(
+  "bunx",
+  ["--no-install", "vite", "--config", "tools/studio/kit/vite.studio.mjs"],
+  {
+    env: { ...process.env, STUDIO_PORT: String(port) },
+    shell: true,
+    stdio: "ignore",
+  },
+);
 const url = `http://127.0.0.1:${port}/tools/earth/earth.html`;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 for (let i = 0; i < 60; i++) {
@@ -50,10 +58,16 @@ for (let i = 0; i < 60; i++) {
   await sleep(1000);
 }
 const { chromium } = await import(pathToFileURL(playwright).href);
-const browser = await chromium.launch({ channel: "chrome", headless: false, args: ["--window-size=900,900"] });
+const browser = await chromium.launch({
+  channel: "chrome",
+  headless: false,
+  args: ["--window-size=900,900"],
+});
 const written = [];
 try {
-  const page = await (await browser.newContext({ viewport: { width: 800, height: 800 } })).newPage();
+  const page = await (
+    await browser.newContext({ viewport: { width: 800, height: 800 } })
+  ).newPage();
   page.on("pageerror", (e) => console.log(`page error: ${e.message}`));
   await page.goto(url);
   await page.waitForFunction(() => !!window.__EARTH__, null, { timeout: 120_000 });

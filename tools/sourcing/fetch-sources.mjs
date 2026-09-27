@@ -5,7 +5,8 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-const NASA = "NASA (public domain; NASA media usage guidelines: no insignia, no implied endorsement)";
+const NASA =
+  "NASA (public domain; NASA media usage guidelines: no insignia, no implied endorsement)";
 const NASA_EO = "https://eoimages.gsfc.nasa.gov/images/imagerecords";
 const NASA_3D = "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models";
 export const SOURCES = [
@@ -69,7 +70,11 @@ export const SOURCES = [
   // Quaternius Ultimate Space Kit (CC0 1.0; License.txt in the pack), public Google Drive folder
   // linked from https://quaternius.com/packs/ultimatespacekit.html.
   ...[
-    ["quaternius-astronaut-finn", "Astronaut_FinnTheFrog.gltf", "10ATgJNePYwkF13BW5viSw0xAoX7dwjJv"],
+    [
+      "quaternius-astronaut-finn",
+      "Astronaut_FinnTheFrog.gltf",
+      "10ATgJNePYwkF13BW5viSw0xAoX7dwjJv",
+    ],
     ["quaternius-rover-round", "Rover_Round.gltf", "1BgVJWTe89P5Uvgr8D_v36-uC1Ty9vQGF"],
     ["quaternius-rover-1", "Rover_1.gltf", "1oQqZiRr61zqPOKzKNBvIx4huQ5_xby_o"],
     ["quaternius-licence", "License.txt", "1WmpH3wsL_759gtn2JQTsz0v4eyG0bK-Z"],
