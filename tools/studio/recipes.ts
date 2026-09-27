@@ -104,8 +104,8 @@ const shadePanel: Build = (seed) => {
 
 export const project = { id: "10-the-moon-has-a-gardener", name: "THE MOON HAS A GARDENER", background: 0x161a26 };
 export const families: Recipes["families"] = [
-  { id: "lunar-plant", count: 50, voxel: 0.0012, keep: 0.3, hero: true, build: plant },
-  { id: "moon-rock", count: 30, voxel: 0.004, keep: 0.25, dirt: 0.5, build: moonRock },
+  { id: "lunar-plant", count: 100, voxel: 0.0012, keep: 0.3, hero: true, build: plant },
+  { id: "moon-rock", count: 60, voxel: 0.004, keep: 0.25, dirt: 0.5, build: moonRock },
   { id: "shade-panel", count: 8, voxel: 0.003, keep: 0.3, build: shadePanel },
 ];
 export const textures: Recipes["textures"] = [
