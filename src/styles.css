@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --color-ink: #f4efe4;
+  --color-dim: #a9a6b8;
+  --color-glass: rgb(10 12 22 / 0.72);
+  --color-line: rgb(255 255 255 / 0.12);
+  --color-sun: #ffc862;
+  --color-cress: #6fdcc8;
+  --color-leaf: #f0b23a;
+  --color-bell: #9c8bff;
+  --color-bloom: #5ee0a8;
+  --color-scorch: #ff8a4c;
+  --color-starve: #a9a3cf;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: #04050a;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.glass {
+  background: var(--color-glass);
+  border: 1px solid var(--color-line);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-sun);
+  outline-offset: 2px;
+}
+
+.btn {
+  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  min-height: 44px;
+  transition:
+    background-color 0.2s,
+    opacity 0.2s,
+    transform 0.2s;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--color-sun);
+  color: #1b1408;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #ffd98e;
+}
+.btn-ghost {
+  background: rgb(255 255 255 / 0.08);
+  color: var(--color-ink);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.16);
+}
+
+input[type="range"].sun-range {
+  accent-color: var(--color-sun);
+  height: 44px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+}
