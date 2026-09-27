@@ -11,3 +11,4 @@ output/
 *.tsbuildinfo
 .DS_Store
 assets-src/studio/
+assets-src/sourced/
