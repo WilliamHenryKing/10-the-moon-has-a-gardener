@@ -9,6 +9,9 @@ export interface PlantLook {
   bloom: number; // 0..1 flower opening, only at the end of a good day
 }
 
+const SCORCHED = new THREE.Color(PALETTE.scorched);
+const STARVED = new THREE.Color(PALETTE.starved);
+
 const leafGeo = (() => {
   // A pointed leaf blade: a flattened, tapered sphere, pivot at its base.
   const g = new THREE.SphereGeometry(0.5, 12, 8);
@@ -155,16 +158,12 @@ export class PlantView {
     s.health = this.look.health;
     s.lit = this.look.lit;
 
-    const size = 0.3 + s.growth * 0.7;
+    const size = (0.3 + s.growth * 0.7) * 1.6;
     this.group.scale.setScalar(size);
     const scorched = s.health === "scorched";
     const starved = s.health === "starved";
     const wilt = scorched || starved ? 1 : 0;
-    const target = scorched
-      ? new THREE.Color(PALETTE.scorched)
-      : starved
-        ? new THREE.Color(PALETTE.starved)
-        : this.baseColor;
+    const target = scorched ? SCORCHED : starved ? STARVED : this.baseColor;
     this.body.color.lerp(target, k * 0.5);
     this.body.emissive.copy(this.body.color);
 

@@ -95,8 +95,8 @@ function place(o: THREE.Object3D, x: number, z: number, ry = 0): THREE.Object3D 
 /** Set dressing around the bed. `half` is half the bed width so props clear it. */
 export function createEquipment(): THREE.Group {
   const g = new THREE.Group();
-  g.add(place(habitat(), 7.5, -9, -0.5));
-  g.add(place(waterTank(), 5.1, -3.4));
+  g.add(place(habitat(), 10, -13, -0.6));
+  g.add(place(waterTank(), 5.6, -4.2));
   g.add(place(lampMast(), -4.8, -3.8));
   const c1 = place(crate(), 5.2, 3.2, 0.3);
   c1.position.y += 0.2;

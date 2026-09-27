@@ -11,7 +11,6 @@ const mat = (color: number, roughness = 0.6, metalness = 0.2) =>
 export class Rover {
   readonly group = new THREE.Group();
   private stack = new THREE.Group();
-  private wheels: THREE.Mesh[] = [];
 
   constructor() {
     const white = mat(PALETTE.suit, 0.55);
@@ -41,7 +40,6 @@ export class Rover {
         hub.position.copy(w.position);
         const strut = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.24, 0.06), metal);
         strut.position.set(side * 0.55, 0.36, z);
-        this.wheels.push(w);
         this.group.add(w, hub, strut);
       }
     }
@@ -86,10 +84,5 @@ export class Rover {
       p.castShadow = true;
       this.stack.add(p);
     }
-  }
-
-  update(time: number): void {
-    // Idle shimmer of the wheels settling in the regolith.
-    for (const [i, w] of this.wheels.entries()) w.rotation.x = Math.sin(time * 0.3 + i) * 0.02;
   }
 }

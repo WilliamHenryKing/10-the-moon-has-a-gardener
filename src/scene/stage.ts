@@ -25,7 +25,7 @@ export class GardenScene {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1200);
-  private sun = new THREE.DirectionalLight(PALETTE.sunKey, 3.2);
+  private sun = new THREE.DirectionalLight(PALETTE.sunKey, 2.8);
   private sky = createSky();
   private bed = new Bed();
   private plants: PlantView[] = [];
@@ -44,6 +44,9 @@ export class GardenScene {
   private raycaster = new THREE.Raycaster();
   private firstFrame: (() => void) | null;
   private frame = 0;
+  private endT = 0;
+  private viewW = 1;
+  private viewH = 1;
 
   constructor(
     private host: HTMLElement,
@@ -58,14 +61,14 @@ export class GardenScene {
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.AgXToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.05;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.domElement.className = "block h-full w-full";
     host.appendChild(this.renderer.domElement);
 
     this.scene.background = SPACE;
-    this.scene.add(new THREE.HemisphereLight(PALETTE.hemiSky, PALETTE.hemiGround, 0.55));
+    this.scene.add(new THREE.HemisphereLight(PALETTE.hemiSky, PALETTE.hemiGround, 0.9));
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
     const sc = this.sun.shadow.camera;
@@ -133,6 +136,11 @@ export class GardenScene {
 
   /** Drive a lunar day: t runs 0..HOURS, bloom 0..1 after it ends. null returns to planning. */
   setDay(day: DayView): void {
+    if (day && !this.day && this.level) {
+      // The gardener steps off the bed to watch the day play out.
+      const l = this.level;
+      this.astronaut.tend(new THREE.Vector3(-l.width / 2 - 0.2, 0, l.depth / 2 - 0.2));
+    }
     this.day = day;
     if (day) this.hour = day.t;
     this.refresh();
@@ -192,27 +200,40 @@ export class GardenScene {
   };
 
   private resize = (): void => {
-    const w = this.host.clientWidth || window.innerWidth;
-    const h = this.host.clientHeight || window.innerHeight;
-    this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
+    this.viewW = this.host.clientWidth || window.innerWidth;
+    this.viewH = this.host.clientHeight || window.innerHeight;
+    this.renderer.setSize(this.viewW, this.viewH, false);
   };
 
-  /** Frame the bed: pull back on narrow screens so the whole garden stays in view. */
-  private cameraGoal(pos: THREE.Vector3, look: THREE.Vector3): void {
+  /**
+   * Third-person framing with an off-axis lens: the camera looks down at the bed, but the
+   * frame is shifted upward so the horizon, Earth and stars stay in view above the garden.
+   * Narrow screens pull back and show more sky.
+   */
+  private cameraGoal(dt: number, pos: THREE.Vector3, look: THREE.Vector3): void {
+    this.endT += ((this.ending ? 1 : 0) - this.endT) * (this.reduced ? 1 : Math.min(1, dt * 0.8));
+    const e = this.endT;
+    const w = this.viewW;
+    const h = this.viewH;
+    const aspect = w / h;
+    const portrait = aspect < 0.9;
+    const deg = THREE.MathUtils.degToRad;
+    const pitch = deg((portrait ? 33 : 29) - e * 16);
+    const top = deg((portrait ? 9 : 6) + e * 10); // elevation of the frame's top edge
+    const tUp = Math.tan(pitch + top);
+    const tDown = Math.tan(deg(portrait ? 40 : 24));
     const size = this.level ? Math.max(this.level.width, this.level.depth) : 5;
-    const portrait = this.camera.aspect < 0.9;
-    this.camera.fov = portrait ? 62 : 44;
-    const hHalf = THREE.MathUtils.degToRad(this.camera.fov / 2);
-    const hFov = 2 * Math.atan(Math.tan(hHalf) * this.camera.aspect);
-    const reach = size * 0.62 + 1.4;
-    let dist = Math.max(reach / Math.tan(hFov / 2), size * 1.45 + 3);
-    if (this.ending) dist *= 1.5;
+    const reach = size * 0.6 + (portrait ? 1.2 : 1.9);
+    const hTan = (aspect * (tUp + tDown)) / 2;
+    const dist = Math.max(reach / hTan, size * 1.3 + 3.5) * (1 + e * 0.6);
+
+    const full = (h * 2 * tUp) / (tUp + tDown);
+    this.camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(tUp));
+    this.camera.setViewOffset(w, full, 0, 0, w, h);
+
     const a = this.astronaut.group.position;
-    look.set(a.x * 0.15, portrait ? -1.2 : 0.2, a.z * 0.1 + (portrait ? 0 : -0.6));
-    pos.set(look.x * 0.5, dist * 0.52, dist * 0.86);
-    if (this.ending) pos.y *= 0.55;
+    look.set(a.x * 0.12 * (1 - e), 0.2, a.z * 0.08 * (1 - e));
+    pos.set(look.x, look.y + dist * Math.sin(pitch), look.z + dist * Math.cos(pitch));
   }
 
   private tick = (): void => {
@@ -231,7 +252,7 @@ export class GardenScene {
 
     const goalPos = new THREE.Vector3();
     const goalLook = new THREE.Vector3();
-    this.cameraGoal(goalPos, goalLook);
+    this.cameraGoal(dt, goalPos, goalLook);
     this.camera.updateProjectionMatrix();
     const k = this.frame === 0 || this.reduced ? 1 : Math.min(1, dt * 1.5);
     this.camPos.lerp(goalPos, k);

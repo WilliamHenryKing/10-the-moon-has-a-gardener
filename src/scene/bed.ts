@@ -127,7 +127,7 @@ export class Bed {
 
     for (const p of level.plants) {
       const pips = new THREE.InstancedMesh(
-        new THREE.SphereGeometry(0.045, 10, 6),
+        new THREE.SphereGeometry(0.06, 10, 6),
         new THREE.MeshBasicMaterial(),
         HOURS,
       );
@@ -178,7 +178,7 @@ export class Bed {
     for (let z = 0; z < level.depth; z++) {
       for (let x = 0; x < level.width; x++) {
         this.tint.copy((x + z) % 2 ? alt : soil);
-        if (isShaded(casters, { x, z }, h)) this.tint.lerp(shade, 0.75);
+        if (isShaded(casters, { x, z }, h)) this.tint.lerp(shade, 0.8);
         this.tiles.setColorAt(z * level.width + x, this.tint);
       }
     }
@@ -221,7 +221,11 @@ export class Bed {
       p.rise = Math.max(0, Math.min(1, p.rise + (p.leaving ? -dt : dt) * 2.5));
       const e = p.rise * p.rise * (3 - 2 * p.rise);
       p.group.scale.set(1, Math.max(0.001, e), 1);
-      p.group.rotation.y += (yaw - p.group.rotation.y) * Math.min(1, dt * 6);
+      const turn = Math.atan2(
+        Math.sin(yaw - p.group.rotation.y),
+        Math.cos(yaw - p.group.rotation.y),
+      );
+      p.group.rotation.y += turn * Math.min(1, dt * 6);
     }
     for (const p of this.panels.filter((v) => v.leaving && v.rise <= 0)) this.group.remove(p.group);
     this.panels = this.panels.filter((v) => !(v.leaving && v.rise <= 0));

@@ -154,15 +154,6 @@ export function App({ scene, reduced }: { scene: GardenScene; reduced: boolean }
 
       <div className="flex flex-1 items-center justify-center">
         {state.phase === "title" && <TitleCard onStart={() => dispatch({ type: "start" })} />}
-        {state.phase === "result" && state.reports && (
-          <ResultCard
-            bloomed={state.bloomed}
-            reports={state.reports}
-            last={state.levelIndex === LEVELS.length - 1}
-            onNext={() => dispatch({ type: "next" })}
-            onRetry={() => dispatch({ type: "retry" })}
-          />
-        )}
         {state.phase === "ending" && (
           <EndingCard days={state.daysGrown} onReplay={() => dispatch({ type: "replay" })} />
         )}
@@ -171,17 +162,27 @@ export function App({ scene, reduced }: { scene: GardenScene; reduced: boolean }
       {hudVisible && (
         <footer className="flex flex-col items-center gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-5">
           {planning && hint !== null && <Hint step={hint} onDismiss={finishHint} />}
-          <SunControl
-            hour={state.hour}
-            disabled={!planning}
-            growing={state.phase === "growing"}
-            dayHour={dayT}
-            onHour={(h) => dispatch({ type: "setHour", hour: h })}
-            onGrow={() => {
-              if (hint === 1) finishHint();
-              dispatch({ type: "grow" });
-            }}
-          />
+          {state.phase === "result" && state.reports ? (
+            <ResultCard
+              bloomed={state.bloomed}
+              reports={state.reports}
+              last={state.levelIndex === LEVELS.length - 1}
+              onNext={() => dispatch({ type: "next" })}
+              onRetry={() => dispatch({ type: "retry" })}
+            />
+          ) : (
+            <SunControl
+              hour={state.hour}
+              disabled={!planning}
+              growing={state.phase === "growing"}
+              dayHour={dayT}
+              onHour={(h) => dispatch({ type: "setHour", hour: h })}
+              onGrow={() => {
+                if (hint === 1) finishHint();
+                dispatch({ type: "grow" });
+              }}
+            />
+          )}
         </footer>
       )}
     </div>

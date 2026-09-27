@@ -78,8 +78,8 @@ export function createSky(): Sky {
   const earthMat = new THREE.SpriteMaterial({ transparent: true, depthWrite: false, fog: false });
   earthMat.opacity = 0;
   const earth = new THREE.Sprite(earthMat);
-  earth.position.set(-60, 70, -330);
-  earth.scale.setScalar(72);
+  earth.position.set(-70, 26, -330); // low over the northern rim: Earthrise
+  earth.scale.setScalar(64);
   earth.renderOrder = -1;
   group.add(earth);
   new THREE.TextureLoader().load(

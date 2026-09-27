@@ -81,3 +81,7 @@ input[type="range"].sun-range {
     transition: none;
   }
 }
+
+[role="application"]:focus-visible {
+  outline-offset: -4px;
+}

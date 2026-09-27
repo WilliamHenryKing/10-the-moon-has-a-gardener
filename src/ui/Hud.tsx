@@ -21,7 +21,7 @@ export function TopBar(props: {
     <header className="pointer-events-none flex items-start justify-between gap-3 p-3 sm:p-5">
       <div className="glass pointer-events-auto max-w-md rounded-2xl px-4 py-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-dim">
-          Garden {index + 1} of {LEVELS.length}
+          Garden {index + 1}/{LEVELS.length}
         </p>
         <h1 className="text-lg font-semibold leading-tight sm:text-xl">{level.name}</h1>
         <p className="mt-1 hidden text-sm leading-snug text-dim sm:block">{level.note}</p>
@@ -31,7 +31,11 @@ export function TopBar(props: {
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-dim">Panels</p>
           <p className="text-lg font-semibold tabular-nums" aria-live="polite">
             {panelsLeft}
-            <span className="text-sm text-dim"> / {level.panels} on rover</span>
+            <span className="text-sm text-dim">
+              {" "}
+              / {level.panels}
+              <span className="hidden sm:inline"> on rover</span>
+            </span>
           </p>
         </div>
         <button
