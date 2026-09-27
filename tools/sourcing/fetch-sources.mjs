@@ -17,6 +17,14 @@ export const SOURCES = [
     credit: "NASA Earth Observatory, Blue Marble: Next Generation (Reto Stöckli)",
   },
   {
+    // The plain composite (no topography or bathymetry shading): oceans read as seen from space.
+    id: "earth-bluemarble-ng-jan-plain-21600",
+    file: "earth/world.200401.3x21600x10800.jpg",
+    url: `${NASA_EO}/73000/73938/world.200401.3x21600x10800.jpg`,
+    licence: NASA,
+    credit: "NASA Earth Observatory, Blue Marble: Next Generation (Reto Stöckli)",
+  },
+  {
     id: "earth-clouds-8192",
     file: "earth/cloud_combined_8192.tif",
     url: `${NASA_EO}/57000/57747/cloud_combined_8192.tif`,
