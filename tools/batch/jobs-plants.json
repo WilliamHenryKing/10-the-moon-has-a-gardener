@@ -1,0 +1,10 @@
+{
+  "viewport": [1280, 800],
+  "base": { "plants": "1", "t": "40" },
+  "shots": [
+    { "name": "rows", "params": { "plants": "1", "cam": "plants", "t": "40" } },
+    { "name": "rows-dusk", "params": { "plants": "1", "cam": "plants", "t": "250" } },
+    { "name": "close", "params": { "plants": "1", "cam": "plantsClose", "t": "40" } }
+  ],
+  "sheets": [{ "name": "plants", "shots": ["rows", "rows-dusk", "close"], "cols": 3, "width": 620 }]
+}

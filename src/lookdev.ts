@@ -1,7 +1,11 @@
 import * as THREE from "three";
 import { detectQuality } from "./engine/quality";
 import { World } from "./engine/world";
+import type { Plant } from "./game/garden";
+import { SPECIES_ORDER } from "./game/species";
 import { Gardener, type Motion, stillMotion } from "./scene/gardener/gardener";
+import { GardenView } from "./scene/plants/garden-view";
+import { sunAzimuth } from "./world/sky-model";
 
 // Look-dev harness (docs/visual, Visual Quality Directive §3.3), development only: the gardener on
 // the landing pad in the game's own world, light and post chain, from fixed cameras, with the
@@ -24,7 +28,12 @@ const CAMS: Record<
   side: { eye: [4.2, 1.1, 0], look: [0, 0.95, 0], fov: 30 },
   back: { eye: [-1.2, 2.4, 4.6], look: [0, 1.1, -0.4], fov: 45 },
   low: { eye: [1.2, 0.35, -2.2], look: [0, 0.6, 0], fov: 40 },
+  /** The plant rows: every species at four stages (plants=1). */
+  plants: { eye: [0, 2.4, -7.5], look: [0, 0.4, -1.5], fov: 40 },
+  plantsClose: { eye: [-1.5, 1.2, -3.2], look: [-1.5, 0.35, -0.8], fov: 40 },
 };
+let garden: GardenView | null = null;
+const rows: Plant[] = [];
 
 let world: World | null = null;
 let gardener: Gardener | null = null;
@@ -92,6 +101,36 @@ async function start() {
   g.ground = (x, z) => (world as World).terrain.heightAt(x, z);
   world.stage.scene.add(g.root);
   origin.y = world.terrain.heightAt(origin.x, origin.z);
+  if (params.plants === "1") {
+    g.root.visible = false;
+    const w = world;
+    garden = new GardenView((x, z) => w.terrain.heightAt(x, z));
+    w.stage.scene.add(garden.group);
+    const stages = [0.15, 0.4, 0.75, 1];
+    SPECIES_ORDER.forEach((species, i) => {
+      stages.forEach((growth, j) => {
+        // In the camera's frame (the look-dev turns everything by π about the origin).
+        const x = origin.x - (i - 3) * 1.3;
+        const z = origin.z + 1.4 - j * 1.6 + 3;
+        rows.push({
+          id: rows.length + 1,
+          species,
+          x,
+          z,
+          growth,
+          water: 1,
+          sun: 1,
+          earth: 1,
+          wet: 1,
+          fit: 1,
+          harvestIn: 0,
+          bloomed: growth >= 1,
+        });
+      });
+    });
+    garden.update(rows, 0, 0);
+    for (let k = 0; k < 3; k++) garden.update(rows, 1, sunAzimuth(w.time));
+  }
   const resize = () => world?.stage.resize(window.innerWidth, window.innerHeight);
   window.addEventListener("resize", resize);
   resize();
@@ -102,6 +141,7 @@ async function start() {
     gardener.root.rotation.y = Math.PI + angle;
     if (dirty) gardener.update(motion, 0, false);
     dirty = false;
+    garden?.update(rows, 0, sunAzimuth(world.time));
     world.update(0, origin);
     world.render();
     frames++;
