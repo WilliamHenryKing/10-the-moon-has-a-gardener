@@ -1,0 +1,22 @@
+{
+  "viewport": [900, 900],
+  "base": { "cam": "full", "t": "40" },
+  "shots": [
+    { "name": "front", "params": { "angle": "20" } },
+    { "name": "back", "params": { "angle": "160" } },
+    { "name": "face", "params": { "cam": "face", "angle": "15" } },
+    { "name": "walk", "params": { "cam": "side", "angle": "90", "speed": "0.8", "phase": "0.8" } },
+    { "name": "lope", "params": { "cam": "side", "angle": "90", "speed": "1.9", "phase": "2.2" } },
+    { "name": "jump", "params": { "angle": "30", "air": "1" } },
+    { "name": "kneel", "params": { "angle": "40", "kneel": "1" } },
+    { "name": "low", "params": { "cam": "low", "angle": "25" } }
+  ],
+  "sheets": [
+    {
+      "name": "gardener",
+      "shots": ["front", "back", "face", "walk", "lope", "jump", "kneel", "low"],
+      "cols": 4,
+      "width": 420
+    }
+  ]
+}

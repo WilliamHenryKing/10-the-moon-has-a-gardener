@@ -1,0 +1,13 @@
+{
+  "place": [3.5, 7, 0.35],
+  "sun": 40,
+  "seconds": 8,
+  "fps": 20,
+  "keys": [
+    { "at": 0.2, "down": ["KeyW"] },
+    { "at": 2.5, "down": ["ShiftLeft"] },
+    { "at": 5.0, "down": ["Space"] },
+    { "at": 5.3, "up": ["Space"] },
+    { "at": 7.5, "up": ["KeyW", "ShiftLeft"] }
+  ]
+}
