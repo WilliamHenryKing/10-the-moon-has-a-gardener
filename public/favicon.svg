@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>THE MOON HAS A GARDENER</title>
+  <rect width="64" height="64" rx="14" fill="#0b0f18"/>
+  <circle cx="30" cy="32" r="20" fill="#b9b3a6"/>
+  <circle cx="38" cy="26" r="17" fill="#0b0f18"/>
+  <circle cx="21" cy="40" r="2.6" fill="#9a9385"/>
+  <circle cx="17" cy="29" r="1.8" fill="#9a9385"/>
+  <path d="M44 50V38" stroke="#7fd08a" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M44 42c0-5 4-8 9-8 0 5-4 8-9 8zM44 45c0-4-3-7-7-7 0 4 3 7 7 7z" fill="#7fd08a"/>
+  <path d="M36 51h16" stroke="#6b6558" stroke-width="2.4" stroke-linecap="round"/>
+</svg>
