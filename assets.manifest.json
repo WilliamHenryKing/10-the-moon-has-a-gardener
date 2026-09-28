@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "project": "10-the-moon-has-a-gardener",
+  "assets": [
+    {
+      "id": "polyhaven-moon_dusted_05",
+      "title": "moon dusted 05",
+      "sourceUrl": "https://polyhaven.com/a/moon_dusted_05",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "sources": [
+        {
+          "file": "moon_dusted_05_diff_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moon_dusted_05/moon_dusted_05_diff_2k.jpg",
+          "sha256": "d661abfd1c1c60753b3a02ffcbb09566d65b4aea4c33c5fde93b2d85c2e7c7f4"
+        },
+        {
+          "file": "moon_dusted_05_nor_gl_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moon_dusted_05/moon_dusted_05_nor_gl_2k.jpg",
+          "sha256": "b9fec2f3952cf612165386f07d962ace8535941399b6755dc4fa7e12348b6a15"
+        },
+        {
+          "file": "moon_dusted_05_arm_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moon_dusted_05/moon_dusted_05_arm_2k.jpg",
+          "sha256": "9f86b2f6a4faa98795bb3048da2f3c12fbd79f455abc6a340c4b6b95c3e1ed67"
+        }
+      ],
+      "processing": "2k JPG → 1024² WebP (colour q86, normal and ARM q90); graded in the shader",
+      "outputFiles": [
+        {
+          "path": "public/textures/moon_dusted_05/moon_dusted_05_diff.webp",
+          "bytes": 130852,
+          "sha256": "dd1611e4cecd81a9f0431ad84b9acb9b99b8fcf4dc66ec2e719b767f35188841"
+        },
+        {
+          "path": "public/textures/moon_dusted_05/moon_dusted_05_nor.webp",
+          "bytes": 498566,
+          "sha256": "5e6c446cdab50de22ca5728c7fe939ddc81d9a553bf0074249dafc4aaf176dda"
+        },
+        {
+          "path": "public/textures/moon_dusted_05/moon_dusted_05_arm.webp",
+          "bytes": 205046,
+          "sha256": "bbaaecb04ce1b87083381d0437e030ee44b451c896a527c6f9cbf1809d2d468b"
+        }
+      ]
+    },
+    {
+      "id": "polyhaven-moon_01",
+      "title": "moon 01",
+      "sourceUrl": "https://polyhaven.com/a/moon_01",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "sources": [
+        {
+          "file": "moon_01_diff_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moon_01/moon_01_diff_2k.jpg",
+          "sha256": "9527d2c2abba5751c84df872514227e49f64e5041b7ee48178e5cb5da0a6b374"
+        },
+        {
+          "file": "moon_01_nor_gl_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moon_01/moon_01_nor_gl_2k.jpg",
+          "sha256": "073f01d6540b346f338dd41eaf04f2d5594fb5e90ec0fec34d6c690e0b9b219f"
+        },
+        {
+          "file": "moon_01_arm_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moon_01/moon_01_arm_2k.jpg",
+          "sha256": "bb26c585fbabaf2c52c32bbe7bd50301e7e917e264c7e2fef55a651c67146a85"
+        }
+      ],
+      "processing": "2k JPG → 1024² WebP (colour q86, normal and ARM q90); graded in the shader",
+      "outputFiles": [
+        {
+          "path": "public/textures/moon_01/moon_01_diff.webp",
+          "bytes": 8568,
+          "sha256": "2c060e82ebb348ba0fccbbcea943c03f5cd913e8e798a95504c28efac85c0356"
+        },
+        {
+          "path": "public/textures/moon_01/moon_01_nor.webp",
+          "bytes": 542456,
+          "sha256": "13c89504f3c82c43459514516c015e927b4f011805b3c36ad6bf672c3193fe24"
+        },
+        {
+          "path": "public/textures/moon_01/moon_01_arm.webp",
+          "bytes": 196288,
+          "sha256": "6587da5eb8ff63c9d596dfc43470f7db6887c01ef9d83b0d01b839d6cb8c5152"
+        }
+      ]
+    },
+    {
+      "id": "polyhaven-moon_meteor_01",
+      "title": "moon meteor 01",
+      "sourceUrl": "https://polyhaven.com/a/moon_meteor_01",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "sources": [
+        {
+          "file": "moon_meteor_01_diff_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moon_meteor_01/moon_meteor_01_diff_2k.jpg",
+          "sha256": "8c427897c2da0c856ef06e90582209f5286dfcc5ce244538dd9253b106ac08da"
+        },
+        {
+          "file": "moon_meteor_01_nor_gl_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moon_meteor_01/moon_meteor_01_nor_gl_2k.jpg",
+          "sha256": "6ec72b3169864d382d2e06b7c1b5bcb4a40c7b02d4ea443a697df99bb5b53e9b"
+        },
+        {
+          "file": "moon_meteor_01_arm_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moon_meteor_01/moon_meteor_01_arm_2k.jpg",
+          "sha256": "1c6077a70bcecd00b8f3cc1a0289ad94749cfa054fab7f36689761431a7b8881"
+        }
+      ],
+      "processing": "2k JPG → 1024² WebP (colour q86, normal and ARM q90); graded in the shader",
+      "outputFiles": [
+        {
+          "path": "public/textures/moon_meteor_01/moon_meteor_01_diff.webp",
+          "bytes": 7686,
+          "sha256": "5f3e149e6b06902f0ccc43dab631daa8448b96832f0011a58d087a3475b7a060"
+        },
+        {
+          "path": "public/textures/moon_meteor_01/moon_meteor_01_nor.webp",
+          "bytes": 470750,
+          "sha256": "5e2f800725cc2a0495f0768d2bb213ba457c3ebab5ca3de2a2a0797dbc234a8b"
+        },
+        {
+          "path": "public/textures/moon_meteor_01/moon_meteor_01_arm.webp",
+          "bytes": 84356,
+          "sha256": "00a8a53137329f38329894152c360fb51426b829abe483190a0857e96cbe642f"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+[
+  { "name": "pad", "params": { "cam": "pad", "t": "0" } },
+  { "name": "overview", "params": { "cam": "overview", "t": "0" } },
+  { "name": "bowl", "params": { "cam": "bowl", "t": "0" } },
+  { "name": "earth", "params": { "cam": "earth", "t": "120" } },
+  { "name": "ridge", "params": { "cam": "ridge", "t": "240" } },
+  { "name": "ground", "params": { "cam": "ground", "t": "0" } }
+]
