@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 360" width="1280" height="360" role="img" aria-label="THE MOON HAS A GARDENER: Stand shade panels under a sun that never climbs, then grow a day.">
+<title>THE MOON HAS A GARDENER</title>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#06080e"/><stop offset="1" stop-color="#161d2e"/></linearGradient>
+<radialGradient id="glow" cx="0.78" cy="0.45" r="0.55"><stop offset="0" stop-color="#7fd08a" stop-opacity="0.42"/><stop offset="1" stop-color="#7fd08a" stop-opacity="0"/></radialGradient>
+<linearGradient id="scan" x1="0" x2="1"><stop offset="0" stop-color="#7fd08a" stop-opacity="0"/><stop offset="0.5" stop-color="#7fd08a" stop-opacity="0.18"/><stop offset="1" stop-color="#7fd08a" stop-opacity="0"/></linearGradient>
+</defs>
+<style>
+.t{font-family:'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;font-weight:800;fill:#eef1f6;letter-spacing:-0.01em;animation:rise 1.1s ease-out both}
+.e{font-family:'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;font-weight:700;font-size:17px;letter-spacing:0.28em;fill:#7fd08a;animation:rise 0.9s ease-out both}
+.g{font-family:'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:24px;fill:#eef1f6;opacity:0.82;animation:rise 1.3s ease-out 0.45s both}
+.u{animation:grow 1.4s ease-out 0.6s both;transform-origin:72px 0}
+.glow{animation:breathe 7s ease-in-out infinite;transform-origin:1000px 160px}
+.p{animation:drift linear infinite}
+.ring{transform-origin:1010px 180px;animation:spin linear infinite}
+.wave{animation:slide linear infinite}
+.scan{animation:sweep 6s linear infinite}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes breathe{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+@keyframes drift{0%{transform:translateY(0);opacity:0}15%{opacity:.9}100%{transform:translateY(-190px);opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slide{to{transform:translateX(-160px)}}
+@keyframes sweep{to{transform:translateX(1520px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<rect width="1280" height="360" fill="url(#bg)"/>
+<rect class="glow" width="1280" height="360" fill="url(#glow)"/>
+<circle class="p" cx="23" cy="231" r="1.4" fill="#7fd08a" style="animation-duration:6.6s;animation-delay:-9.7s"/><circle class="p" cx="308" cy="220" r="1.7" fill="#9aa3b5" style="animation-duration:8.2s;animation-delay:-11.0s"/><circle class="p" cx="1189" cy="273" r="3.0" fill="#9aa3b5" style="animation-duration:6.3s;animation-delay:-3.8s"/><circle class="p" cx="790" cy="198" r="1.1" fill="#7fd08a" style="animation-duration:11.8s;animation-delay:-8.1s"/><circle class="p" cx="752" cy="335" r="2.5" fill="#9aa3b5" style="animation-duration:13.5s;animation-delay:-5.0s"/><circle class="p" cx="155" cy="284" r="3.0" fill="#9aa3b5" style="animation-duration:6.8s;animation-delay:-7.1s"/><circle class="p" cx="1014" cy="290" r="1.5" fill="#7fd08a" style="animation-duration:8.1s;animation-delay:-4.5s"/><circle class="p" cx="488" cy="359" r="1.1" fill="#9aa3b5" style="animation-duration:13.9s;animation-delay:-4.2s"/><circle class="p" cx="76" cy="182" r="3.4" fill="#9aa3b5" style="animation-duration:12.9s;animation-delay:-1.9s"/><circle class="p" cx="481" cy="281" r="3.0" fill="#7fd08a" style="animation-duration:7.9s;animation-delay:-11.4s"/><circle class="p" cx="850" cy="337" r="1.9" fill="#9aa3b5" style="animation-duration:9.1s;animation-delay:-1.4s"/><circle class="p" cx="375" cy="247" r="1.3" fill="#9aa3b5" style="animation-duration:7.5s;animation-delay:-11.6s"/><circle class="p" cx="649" cy="292" r="1.5" fill="#7fd08a" style="animation-duration:12.5s;animation-delay:-8.3s"/><circle class="p" cx="1128" cy="345" r="2.8" fill="#9aa3b5" style="animation-duration:10.5s;animation-delay:-10.4s"/><circle class="p" cx="842" cy="254" r="2.2" fill="#9aa3b5" style="animation-duration:13.9s;animation-delay:-8.7s"/><circle class="p" cx="846" cy="305" r="2.0" fill="#7fd08a" style="animation-duration:13.9s;animation-delay:-4.3s"/><circle class="p" cx="517" cy="348" r="1.5" fill="#9aa3b5" style="animation-duration:11.9s;animation-delay:-2.1s"/><circle class="p" cx="832" cy="316" r="2.0" fill="#9aa3b5" style="animation-duration:11.8s;animation-delay:-9.8s"/><circle class="p" cx="779" cy="164" r="3.0" fill="#7fd08a" style="animation-duration:6.9s;animation-delay:-6.8s"/><circle class="p" cx="1255" cy="362" r="2.3" fill="#9aa3b5" style="animation-duration:8.2s;animation-delay:-8.2s"/><circle class="p" cx="564" cy="336" r="1.6" fill="#9aa3b5" style="animation-duration:6.0s;animation-delay:-3.8s"/><circle class="p" cx="1227" cy="345" r="2.2" fill="#7fd08a" style="animation-duration:12.0s;animation-delay:-5.2s"/><circle class="p" cx="468" cy="380" r="3.5" fill="#9aa3b5" style="animation-duration:13.1s;animation-delay:-7.8s"/><circle class="p" cx="948" cy="269" r="2.8" fill="#9aa3b5" style="animation-duration:8.2s;animation-delay:-8.7s"/><circle class="p" cx="360" cy="300" r="1.1" fill="#7fd08a" style="animation-duration:6.8s;animation-delay:-12.0s"/><circle class="p" cx="1046" cy="255" r="1.9" fill="#9aa3b5" style="animation-duration:6.2s;animation-delay:-3.8s"/><circle class="p" cx="136" cy="254" r="2.0" fill="#9aa3b5" style="animation-duration:6.6s;animation-delay:-4.2s"/><circle class="p" cx="1060" cy="246" r="3.1" fill="#7fd08a" style="animation-duration:8.9s;animation-delay:-0.4s"/><circle class="p" cx="275" cy="265" r="2.6" fill="#9aa3b5" style="animation-duration:8.1s;animation-delay:-10.4s"/><circle class="p" cx="191" cy="254" r="1.3" fill="#9aa3b5" style="animation-duration:13.9s;animation-delay:-0.9s"/><circle class="p" cx="880" cy="338" r="2.1" fill="#7fd08a" style="animation-duration:7.8s;animation-delay:-3.9s"/><circle class="p" cx="9" cy="163" r="2.4" fill="#9aa3b5" style="animation-duration:6.9s;animation-delay:-4.8s"/><circle class="p" cx="1205" cy="326" r="2.4" fill="#9aa3b5" style="animation-duration:9.4s;animation-delay:-6.1s"/><circle class="p" cx="669" cy="316" r="3.3" fill="#7fd08a" style="animation-duration:13.3s;animation-delay:-9.3s"/>
+<text x="72" y="97.7" class="e">A LUNAR LIGHT-AND-SHADE GARDEN</text>
+<text x="72" y="168" font-size="74" class="t" style="animation-delay:0.15s">THE MOON HAS</text><text x="72" y="240.51999999999998" font-size="74" class="t" style="animation-delay:0.35s">A GARDENER</text>
+<rect class="u" x="72" y="262.52" width="502" height="3" fill="#7fd08a"/>
+<text x="72" y="298.52" class="g">Stand shade panels under a sun that never climbs, then grow a day.</text>
+</svg>

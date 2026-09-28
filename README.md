@@ -1,12 +1,21 @@
-# THE MOON HAS A GARDENER
+<p align="center"><img src="docs/readme/banner.svg" alt="THE MOON HAS A GARDENER: stand shade panels under a sun that never climbs, then grow a day." width="100%"></p>
 
-**Status: v1 playable.** This is a third-person light-and-shade puzzle on a small lunar farm. An astronaut gardener, their farm rover and six hand-authored gardens sit near the lunar south pole, with Earth over the northern rim. It has CC0 music, ambience and SFX for every interaction, with a persistent mute. The run goes: title → six gardens → ending → replay. All rules are pure TypeScript with tests, and a solver proves that every garden can bloom within its panel budget. Everything is built procedurally in three.js except the Earth plate. Not deployed.
+<p align="center">
+  <a href="https://10-the-moon-has-a-gardener.williamking.workers.dev"><img alt="Play it live" src="https://img.shields.io/badge/Play_it_live-%E2%96%B6-7fd08a?style=for-the-badge&labelColor=06080e"></a>
+  <img alt="Three.js" src="https://img.shields.io/badge/Three.js-7fd08a?style=for-the-badge&logo=threedotjs&logoColor=06080e&labelColor=06080e">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-7fd08a?style=for-the-badge&logo=typescript&logoColor=06080e&labelColor=06080e">
+  <img alt="React" src="https://img.shields.io/badge/React-7fd08a?style=for-the-badge&logo=react&logoColor=06080e&labelColor=06080e">
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-7fd08a?style=for-the-badge&logo=vite&logoColor=06080e&labelColor=06080e">
+  <img alt="Bun" src="https://img.shields.io/badge/Bun-7fd08a?style=for-the-badge&logo=bun&logoColor=06080e&labelColor=06080e">
+</p>
+
+**A light-and-shade garden at the lunar south pole.** The Sun never climbs here: it circles the horizon once a lunar day, throwing long shadows every way. Stand shade panels so each plant gets its share of light, then grow a day and watch.
+
+<p align="center"><img src="docs/readme/preview.gif" alt="Turning the Sun, then growing a day in the first garden" width="800"></p>
 
 ## How to play
 
-At the lunar pole the Sun never climbs high. It circles the horizon once per lunar day, which the game samples as **8 hours** (east, north-east, north, …). Every **shade panel** and **rock** throws a shadow **two tiles long**, pointing straight away from the Sun.
-
-Each plant needs a share of the day's light:
+The lunar day is sampled as **8 hours**. Every shade panel and rock throws a shadow **two tiles long**, pointing straight away from the Sun. Each plant needs its share:
 
 | Plant | Light it needs | Too much | Too little |
 | --- | --- | --- | --- |
@@ -14,15 +23,42 @@ Each plant needs a share of the day's light:
 | Mooncress (teal fronds) | 3–5 hours | scorches | starves |
 | Nightbell (violet bell, glows in shade) | 0–3 hours | scorches | — |
 
-- **Stand or lift panels:** tap or click a soil tile. The rover carries a limited number, and its stack shows what's left.
-- **Read the light:** the ring of 8 dots around each plant shows its 8 hours, gold where the Sun reaches it. The ring turns green when the plant will bloom, orange when it's too bright and lilac when it's too dark. The list at the top says the same in words.
-- **Turn the Sun** with the slider or ◀ ▶ to preview any hour's shadows. Shaded tiles darken to blue.
-- **Grow a day:** the Sun circles once and each plant grows hour by hour. A plant scorches the moment it has had too much light, and starves the moment the rest of the day can't give it enough. If every plant blooms, the next garden opens.
-- **Keyboard:** Tab to the garden, then use the arrow keys to move the cursor (the gardener walks there) and Enter or Space to stand or lift a panel. `[` and `]` turn the Sun, and `G` grows a day. All buttons are reachable with Tab.
-- **Sound:** 🔊 button or `M` to mute; the choice is remembered. Audio starts on your first tap or key press and pauses while the tab is hidden.
-- If `prefers-reduced-motion` is set, the day plays quickly and the camera and walking snap into place instead of animating.
+- **Stand or lift panels** on the soil tiles. The rover carries a limited number, and its stack shows what's left.
+- **Read the light:** the ring of 8 dots around each plant is its day, gold where the Sun reaches it; green means it will bloom, orange too bright, lilac too dark.
+- **Turn the Sun** with the slider or ◀ ▶ to preview any hour's shadows.
+- **Grow a day:** the Sun circles once. A plant scorches the moment it has too much light and starves when the rest of the day can't give it enough. When everything blooms, the next garden opens.
 
-## Development
+| Input | Keys and gestures |
+| --- | --- |
+| Stand or lift a panel | Tap a soil tile, or arrow keys to walk the gardener and `Enter` / `Space` |
+| Turn the Sun | Slider, ◀ ▶, or `[` `]` |
+| Grow a day | `G` |
+| Mute (remembered) | 🔊 or `M` |
+
+## What's inside
+
+- **Six hand-authored gardens**, from title to ending to replay.
+- **A solver-backed puzzle design:** a solver proves every garden can bloom within its panel budget, and the rules are pure, tested TypeScript.
+- **A third-person gardener** in an astronaut suit, with a farm rover that carries the panels.
+- **Real Earth over the rim:** a plate rendered from NASA's Blue Marble, cloud and Black Marble imagery.
+- **Legible light:** shaded tiles darken to blue, and every plant carries a ring that shows its whole day at a glance.
+- **Sound:** a CC0 space score and ambience, with a cue for every panel, hour and bloom, plus a synth fallback if a browser can't decode a file.
+- **Reduced motion respected:** the day plays quickly and the camera snaps rather than animates.
+
+## Screenshots
+
+| Desktop | Phone |
+| --- | --- |
+| <img src="docs/readme/desktop.png" alt="The lunar garden at mid-day on desktop" width="560"> | <img src="docs/readme/phone.png" alt="The same garden on a phone" width="220"> |
+
+## Built with
+
+Three.js for the lunar stage, plants, astronaut, rover, terrain and sky; React for the HUD; TypeScript throughout; Vite and Bun for the build.
+
+- **Polar sun and two-tile shadows:** the whole light model is discrete and testable, so what you preview is exactly what grows.
+- **A state reducer and solver** in `src/game/` keep the rules independent of the scene.
+
+## Run it locally
 
 ```sh
 bun install --frozen-lockfile
@@ -30,22 +66,23 @@ bun run dev      # http://127.0.0.1:4520/
 bun run check    # tsc, Biome, bun test, production build into dist/
 ```
 
-Layout: `src/game/` holds the rules, gardens, solver and state reducer (pure and tested in `tests/`). `src/scene/` has the three.js stage, bed, plants, astronaut, rover, terrain, props and sky. `src/ui/` is the React HUD, and `src/main.tsx` wires them together. The arrival veil lives in `index.html` and `src/loader.ts`.
+`src/game/` holds the rules, gardens, solver and reducer (tested in `tests/`), `src/scene/` the three.js stage, `src/ui/` the React HUD, and `src/main.tsx` wires them together.
 
 ## Credits
 
-- **Earth:** `public/earth/earth_americas_half.png`, rendered in pre-production (`tools/earth/`) from NASA Earth Observatory's *Blue Marble: Next Generation* (surface), NASA GSFC Blue Marble clouds and NASA *Black Marble 2016* (city lights). These are public domain; credit NASA Earth Observatory. Their use doesn't imply NASA endorsement.
-- Everything else (terrain, plants, astronaut suit, rover, panels, props, stars and the Sun) is authored procedurally in code for this project.
-- Type uses the system font stack.
+- **Earth:** `public/earth/earth_americas_half.png`, rendered from NASA Earth Observatory's *Blue Marble: Next Generation* (surface), NASA GSFC Blue Marble clouds and NASA *Black Marble 2016* (city lights). Public domain; credit NASA Earth Observatory. Use does not imply NASA endorsement.
+- Everything else (terrain, plants, suit, rover, panels, props, stars, Sun) is authored procedurally in code. Type uses the system font stack.
 
-### Sound
-
-All audio is CC0 (public domain dedication), 18 files, about 1.6 MB, in `public/audio/`. Files are used as distributed (Ogg Vorbis). If a browser can't decode one, a small Web Audio synth stands in (`src/audio/synth.ts`).
+Audio, all **CC0** (18 files, about 1.6 MB in `public/audio/`):
 
 | File(s) | Use | Source | Author | Licence |
 | --- | --- | --- | --- | --- |
-| `music-observing-the-star.ogg` (`ObservingTheStar.ogg`) | music loop | https://opengameart.org/content/another-space-background-track | yd | CC0 |
-| `ambience-deep-space-array.ogg` (`Spacearray.ogg`) | ambience loop | https://opengameart.org/content/deep-space-array | Tozan | CC0 |
-| `panel-place-1/2` (`impactPlate_light_000/002`), `step-1/2` (`footstep_snow_000/003`) | panel set down, footsteps | Impact Sounds, https://kenney.nl/assets/impact-sounds | Kenney (kenney.nl) | CC0 |
-| `panel-lift` (`pluck_002`), `denied` (`error_004`), `sun-tick` (`tick_002`), `cursor` (`click_003`), `ui` (`select_003`), `grow` (`maximize_006`), `hour` (`glass_002`), `bloom` (`glass_004`), `wilt` (`error_006`) | interaction and day cues | Interface Sounds, https://kenney.nl/assets/interface-sounds | Kenney (kenney.nl) | CC0 |
-| `garden-blooms` (`jingles_STEEL07`), `ending` (`jingles_STEEL14`), `garden-fails` (`jingles_PIZZI16`) | result and ending jingles | Music Jingles, https://kenney.nl/assets/music-jingles | Kenney (kenney.nl) | CC0 |
+| `music-observing-the-star.ogg` | music loop | https://opengameart.org/content/another-space-background-track | yd | CC0 |
+| `ambience-deep-space-array.ogg` | ambience loop | https://opengameart.org/content/deep-space-array | Tozan | CC0 |
+| `panel-place-1/2`, `step-1/2` | panel set down, footsteps | Impact Sounds, https://kenney.nl/assets/impact-sounds | Kenney (kenney.nl) | CC0 |
+| `panel-lift`, `denied`, `sun-tick`, `cursor`, `ui`, `grow`, `hour`, `bloom`, `wilt` | interaction and day cues | Interface Sounds, https://kenney.nl/assets/interface-sounds | Kenney (kenney.nl) | CC0 |
+| `garden-blooms`, `ending`, `garden-fails` | result and ending jingles | Music Jingles, https://kenney.nl/assets/music-jingles | Kenney (kenney.nl) | CC0 |
+
+---
+
+<p align="center"><sub>Part of William King's portfolio collection.</sub></p>
