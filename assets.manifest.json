@@ -130,6 +130,72 @@
           "sha256": "00a8a53137329f38329894152c360fb51426b829abe483190a0857e96cbe642f"
         }
       ]
+    },
+    {
+      "id": "nasa-lola-south-pole",
+      "title": "LOLA topography of the lunar south pole",
+      "sourceUrl": "https://pgda.gsfc.nasa.gov/products/78 (5 m/pix site DEMs); https://pgda.gsfc.nasa.gov/products/90 (polar mosaic)",
+      "author": "NASA Goddard Space Flight Center, Planetary Geodesy Data Archive (LOLA team; Barker et al.)",
+      "license": "NASA data (public domain; no NASA insignia, no implied endorsement)",
+      "retrievalDate": "2026-09-30",
+      "sources": [
+        {
+          "file": "Site01_final_adj_5mpp_surf.tif",
+          "url": "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site01/Site01_final_adj_5mpp_surf.tif",
+          "bytes": 40980810,
+          "sha256": "3ba7b97cb00a2bcf21189c3aeb535f65afc21207154ab9f0d43c5bdc1f7e747e"
+        },
+        {
+          "file": "Site04_final_adj_5mpp_surf.tif",
+          "url": "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site04/Site04_final_adj_5mpp_surf.tif",
+          "bytes": 40980806,
+          "sha256": "38ff70dbdf2f066c2cfa94a646c3a59d653ce7f6b4528b15fc1b43ee397ce758"
+        },
+        {
+          "file": "LDEM_80S_80MPP_ADJ.TIF",
+          "url": "https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_80MPP_ADJ.TIF",
+          "bytes": 189158392,
+          "sha256": "82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a"
+        }
+      ],
+      "processing": "tools/bake/lola.py: polar stereographic metres to game metres about the basin (lat -89.543, lon 212.92, turned so the nearside lies at the game's Earth azimuth); nested grids of 12 m to 6 km, 80 m to 40 km and 400 m (box-filtered) to 150 km; relief exaggerated 1.6x about a 12 m plain round the basin; the Moon's curvature applied; skylines in 16 directions on the GPU (NVIDIA Warp); heights as delta-coded uint16 rows, skylines as delta-coded uint8, gzip",
+      "outputFiles": [
+        {
+          "path": "public/lunar/far-h.bin.gz",
+          "bytes": 826387,
+          "sha256": "e46423ff283d6b5cfd30356729b34a55dd0e7be263c360720b0789eb003e55bf"
+        },
+        {
+          "path": "public/lunar/far-horizon.bin.gz",
+          "bytes": 293460,
+          "sha256": "b6118e14773d020e426cae92e24c528f4bef67ec9c05d94d70f9b91759eff8f6"
+        },
+        {
+          "path": "public/lunar/lunar.json",
+          "bytes": 1525,
+          "sha256": "4c7f560dad24e351bbc1d55d0e34254999f485d1212a0f9570021eab5ad4f0bd"
+        },
+        {
+          "path": "public/lunar/mid-h.bin.gz",
+          "bytes": 1297476,
+          "sha256": "f089ac275c45dd31985d244453627a6f3ef065ea3ed09c1def471f49f75b0845"
+        },
+        {
+          "path": "public/lunar/mid-horizon.bin.gz",
+          "bytes": 541998,
+          "sha256": "257f1be3c8e0cf8e2314a86c29b5c5451864b738b5b4ba10f929e34dee1877c9"
+        },
+        {
+          "path": "public/lunar/near-h.bin.gz",
+          "bytes": 1207914,
+          "sha256": "6a57412adb5334e0fdb61c08e2f67d6a48bd1df02fba93b5ddf459533ac3826a"
+        },
+        {
+          "path": "public/lunar/near-horizon.bin.gz",
+          "bytes": 463802,
+          "sha256": "422748688333ff1b46015d6ef642a0e5f62e2f5e8fa79ddcf06f6b40e1c7b7a9"
+        }
+      ]
     }
   ]
 }

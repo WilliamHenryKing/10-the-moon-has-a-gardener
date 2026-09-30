@@ -1,15 +1,14 @@
 import * as THREE from "three";
 import type { Terrain } from "../world/terrain";
-import { fbm } from "../world/terrain-gen";
 import { SUN_MASK_GLSL, type SunMask, sunMaskUniforms } from "./sun-mask";
 
 // The ground: the basin as 30 m chunks at four levels of detail around the camera (skirted so
-// neighbours never crack), and a far ring out to the horizon carrying the polar massifs. One
-// regolith material for both: Poly Haven's CC0 lunar scans (moon_dusted_05, moon_01 and
-// moon_meteor_01), top-projected at two scales and mixed by a macro field so nothing tiles,
-// triplanar on steep crater walls, graded to lunar grey. Lunar photometry replaces Lambert for
-// the Sun: Lommel-Seeliger (the Moon's famously flat, limbless look) with an opposition surge
-// (ground brightening around your own shadow), and the Sun mask for the long shadows.
+// neighbours never crack; the real land beyond is far-land.ts). The regolith material: Poly
+// Haven's CC0 lunar scans (moon_dusted_05, moon_01 and moon_meteor_01), top-projected at two
+// scales and mixed by a macro field so nothing tiles, triplanar on steep crater walls, graded to
+// lunar grey. Lunar photometry replaces Lambert for the Sun: Lommel-Seeliger (the Moon's famously
+// flat, limbless look) with an opposition surge (ground brightening around your own shadow), and
+// the Sun mask for the long shadows.
 
 const CHUNK = 30;
 const SPACING = [0.75, 1.5, 3, 6];
@@ -23,18 +22,8 @@ export interface RegolithMaps {
   meteor: { normal: THREE.Texture };
 }
 
-const REGOLITH_PARS = /* glsl */ `
-  uniform sampler2D dustColour;
-  uniform sampler2D dustNormal;
-  uniform sampler2D dustArm;
-  uniform sampler2D roughNormal;
-  uniform sampler2D roughArm;
-  uniform sampler2D meteorNormal;
-  uniform vec3 sunView;
-  uniform float dustMean;
-  varying vec3 vWorld;
-  varying vec3 vWorldNormal;
-  ${SUN_MASK_GLSL}
+/** Value noise and normal-map helpers, shared with the far land. */
+export const REGOLITH_NOISE = /* glsl */ `
   float rHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float rNoise(vec2 p) {
     vec2 i = floor(p);
@@ -50,12 +39,27 @@ const REGOLITH_PARS = /* glsl */ `
   vec3 blendN(vec3 a, vec3 b) { return normalize(vec3(a.xy + b.xy, a.z * b.z)); }
 `;
 
-const REGOLITH_VERTEX_PARS = /* glsl */ `
+const REGOLITH_PARS = /* glsl */ `
+  uniform sampler2D dustColour;
+  uniform sampler2D dustNormal;
+  uniform sampler2D dustArm;
+  uniform sampler2D roughNormal;
+  uniform sampler2D roughArm;
+  uniform sampler2D meteorNormal;
+  uniform vec3 sunView;
+  uniform float dustMean;
+  varying vec3 vWorld;
+  varying vec3 vWorldNormal;
+  ${SUN_MASK_GLSL}
+  ${REGOLITH_NOISE}
+`;
+
+export const REGOLITH_VERTEX_PARS = /* glsl */ `
   varying vec3 vWorld;
   varying vec3 vWorldNormal;
 `;
 
-const REGOLITH_VERTEX = /* glsl */ `
+export const REGOLITH_VERTEX = /* glsl */ `
   #include <worldpos_vertex>
   vWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * objectNormal);
@@ -186,7 +190,7 @@ export class Ground {
 
   constructor(
     private terrain: Terrain,
-    private material: THREE.Material,
+    material: THREE.Material,
     private lodScale: number,
   ) {
     const n = Math.ceil((terrain.half + 8) / CHUNK);
@@ -201,7 +205,6 @@ export class Ground {
         this.group.add(mesh);
         this.chunks.push({ cx: i, cz: j, lod: 3, mesh });
       }
-    this.group.add(this.farRing());
   }
 
   private geometry(i: number, j: number, lod: number) {
@@ -226,7 +229,9 @@ export class Ground {
         const x = x0 + ga * s;
         const z = z0 + gb * s;
         const edge = a === 0 || b === 0 || a === m - 1 || b === m - 1;
-        const y = t.heightAt(x, z) - (edge ? skirt : 0);
+        // Past the basin's edge the ground sinks away under the far land, which takes over there.
+        const sink = Math.max(0, Math.hypot(x, z) - (t.half - 3)) * 0.6;
+        const y = t.heightAt(x, z) - (edge ? skirt : 0) - sink;
         pos.set([x, y, z], (b * m + a) * 3);
         t.normalAt(x, z, out);
         nor.set([out.x, out.y, out.z], (b * m + a) * 3);
@@ -244,74 +249,6 @@ export class Ground {
     g.computeBoundingSphere();
     this.cache.set(key, g);
     return g;
-  }
-
-  /** Beyond the basin: the outer slopes and the massifs on the horizon. */
-  private farRing() {
-    const t = this.terrain;
-    const inner = t.half - 30;
-    const rings: number[] = [];
-    for (let r = inner; r < 5200; r *= 1.045) rings.push(r);
-    const segs = 720;
-    const massifs = [
-      { az: 38, r: 3300, h: 720, w: 900 },
-      { az: 128, r: 2700, h: 540, w: 700 },
-      { az: 196, r: 3900, h: 980, w: 1300 },
-      { az: 248, r: 3000, h: 480, w: 650 },
-      { az: 302, r: 3600, h: 660, w: 1000 },
-      { az: 347, r: 4300, h: 420, w: 800 },
-    ];
-    const pos = new Float32Array(rings.length * segs * 3);
-    for (let k = 0; k < rings.length; k++) {
-      const r = rings[k] as number;
-      for (let q = 0; q < segs; q++) {
-        const a = (q / segs) * Math.PI * 2;
-        const x = Math.sin(a) * r;
-        const z = -Math.cos(a) * r;
-        let h: number;
-        if (r < t.half - 2) h = t.heightAt(x, z) - 0.6;
-        else {
-          const edge = t.heightAt(Math.sin(a) * (t.half - 2), -Math.cos(a) * (t.half - 2));
-          const out = r - t.half;
-          h =
-            edge * Math.exp(-out / 420) + fbm(x / 400, z / 400, 4, 3) * 18 * Math.min(1, out / 300);
-          for (const mm of massifs) {
-            const ma = (mm.az * Math.PI) / 180;
-            const dx = x - Math.sin(ma) * mm.r;
-            const dz = z + Math.cos(ma) * mm.r;
-            const d2 = (dx * dx + dz * dz) / (mm.w * mm.w);
-            // Ridged relief: sharp crests and gullies rather than smooth domes.
-            let ridged = 0;
-            let amp = 0.5;
-            let f = 1;
-            for (let o = 0; o < 5; o++) {
-              const nz = 1 - Math.abs(fbm((x * f) / 520, (z * f) / 520, 1, 41 + o * 7));
-              ridged += nz * nz * amp;
-              amp *= 0.5;
-              f *= 2.1;
-            }
-            h += mm.h * Math.exp(-d2) * (0.45 + ridged * 1.1);
-          }
-        }
-        pos.set([x, h, z], (k * segs + q) * 3);
-      }
-    }
-    const idx: number[] = [];
-    for (let k = 0; k < rings.length - 1; k++)
-      for (let q = 0; q < segs; q++) {
-        const a = k * segs + q;
-        const b = k * segs + ((q + 1) % segs);
-        // Wound to face up.
-        idx.push(a, b, a + segs, b, b + segs, a + segs);
-      }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    g.setIndex(idx);
-    g.computeVertexNormals();
-    const mesh = new THREE.Mesh(g, this.material);
-    mesh.receiveShadow = true;
-    mesh.frustumCulled = false;
-    return mesh;
   }
 
   /** Choose each chunk's level of detail for the camera. */

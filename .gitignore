@@ -14,3 +14,7 @@ assets-src/studio/
 assets-src/sourced/
 assets-src/renders/
 assets-src/polyhaven/
+assets-src/lola/
+tools/bake/.venv/
+tools/bake/.cache/
+bake/work/

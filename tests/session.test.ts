@@ -1,7 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { CAN_SIZE, createGarden, plant, step } from "../src/game/garden";
 import type { HeightQuery } from "../src/game/light";
-import { ahead, describe as say, nextAction, nextSeed, perform, PLANT_AHEAD, WATER_POINTS } from "../src/game/session";
+import {
+  ahead,
+  nextAction,
+  nextSeed,
+  PLANT_AHEAD,
+  perform,
+  describe as say,
+  WATER_POINTS,
+} from "../src/game/session";
 import { SPECIES_ORDER } from "../src/game/species";
 
 const flat: HeightQuery = {

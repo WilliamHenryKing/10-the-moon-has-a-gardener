@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { Pass } from "three/addons/postprocessing/Pass.js";
 import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { type Dir, earthDirection } from "../world/sky-model";
@@ -12,6 +12,50 @@ import { type Quality, TIERS } from "./quality";
 // no haze), and the only fill is light bounced off the sunlit regolith (a hemisphere from below)
 // with a faint blue Earthshine from above. Reflections come from an environment built from the
 // same sky: black, the Earth, and sunlit ground. AgX tone mapping, applied once in OutputPass.
+//
+// The view reaches from a boot a metre away to mountains 150 km off, more than one depth buffer
+// can hold. So each frame is drawn in two layers: first the sky and the far land with a camera
+// whose near plane starts where the main camera's view ends, then, over it with fresh depth,
+// everything close (the far land again, for its nearer part). Objects in layer 1 are far.
+
+/** The layer the far camera draws. */
+export const FAR_LAYER = 1;
+
+/** Draws the far layer, clears depth, then draws the near scene over it. */
+class LayeredRenderPass extends Pass {
+  private first = true;
+
+  constructor(
+    private scene: THREE.Scene,
+    private near: THREE.Camera,
+    private far: THREE.Camera,
+  ) {
+    super();
+    this.needsSwap = false;
+  }
+
+  override render(
+    renderer: THREE.WebGLRenderer,
+    _write: THREE.WebGLRenderTarget,
+    read: THREE.WebGLRenderTarget,
+  ) {
+    const autoClear = renderer.autoClear;
+    const shadows = renderer.shadowMap.autoUpdate;
+    renderer.autoClear = false;
+    renderer.setRenderTarget(this.renderToScreen ? null : read);
+    renderer.setClearColor(0x000000, 1);
+    renderer.clear(true, true, false);
+    // The far layer casts no shadows worth a second shadow-map pass (after the first frame,
+    // which makes the map exist before anything samples it).
+    renderer.shadowMap.autoUpdate = shadows && this.first;
+    this.first = false;
+    renderer.render(this.scene, this.far);
+    renderer.shadowMap.autoUpdate = shadows;
+    renderer.clearDepth();
+    renderer.render(this.scene, this.near);
+    renderer.autoClear = autoClear;
+  }
+}
 
 /** Irradiance of the Sun in scene units, and the pre-exposure that keeps white suits in range. */
 const SUN = 6.2;
@@ -20,14 +64,18 @@ const EXPOSURE = 1.02;
  * it looks for casters (long low-Sun shadows from hills and the rim). */
 const SHADOW_HALF = 34;
 const SHADOW_REACH = 420;
+/** The fill from below: sunlit regolith all around. */
+const GROUND_BOUNCE = new THREE.Color(0x6e6a64);
 
 export class Stage {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
-  readonly camera = new THREE.PerspectiveCamera(55, 1, 0.05, 9000);
+  readonly camera = new THREE.PerspectiveCamera(55, 1, 0.1, 2000);
+  /** Draws layer 1 (sky and far land) from where `camera`'s view ends. */
+  readonly farCamera = new THREE.PerspectiveCamera(55, 1, 1500, 420000);
   readonly sun = new THREE.DirectionalLight(0xfff6ea, SUN);
   /** Light bounced from the sunlit ground around (and a little Earthshine): shadows stay readable. */
-  readonly fill = new THREE.HemisphereLight(0x3d4555, 0x6e6a64, 1.15);
+  readonly fill = new THREE.HemisphereLight(0x3d4555, GROUND_BOUNCE, 1.15);
   readonly composer: EffectComposer;
   readonly ao: GTAOPass;
   readonly bloom: UnrealBloomPass;
@@ -54,7 +102,9 @@ export class Stage {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    this.scene.background = new THREE.Color(0x000000);
+    // Black space is the clear colour of the layered pass (a background would clear it twice).
+    this.scene.background = null;
+    this.farCamera.layers.set(FAR_LAYER);
 
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(tier.shadow, tier.shadow);
@@ -67,6 +117,8 @@ export class Stage {
     this.sun.shadow.normalBias = texel * 1.2;
     this.sun.shadow.bias = -0.0002;
     this.sun.shadow.radius = 1.5;
+    this.sun.layers.enable(FAR_LAYER);
+    this.fill.layers.enable(FAR_LAYER);
     this.scene.add(this.sun, this.sun.target, this.fill);
     this.scene.environment = this.buildEnvironment();
     this.scene.environmentIntensity = 0.7;
@@ -76,7 +128,7 @@ export class Stage {
       samples: tier.msaa,
     });
     this.composer = new EffectComposer(this.renderer, target);
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.composer.addPass(new LayeredRenderPass(this.scene, this.camera, this.farCamera));
     this.ao = new GTAOPass(this.scene, this.camera, 1, 1);
     this.ao.blendIntensity = 0.85;
     this.ao.updateGtaoMaterial({
@@ -165,6 +217,18 @@ export class Stage {
     return env;
   }
 
+  /** The Sun's full irradiance (colour × intensity), for materials that shadow it themselves. */
+  get sunIrradiance() {
+    return this.sun.color.clone().multiplyScalar(SUN);
+  }
+
+  /** How much of the Sun's disc clears the hills around (0 … 1): dims the key light, and the
+   * light bounced off sunlit ground with it (Earthshine stays). */
+  setSunVisibility(v: number) {
+    this.sun.intensity = SUN * v;
+    this.fill.groundColor.copy(GROUND_BOUNCE).multiplyScalar(0.25 + 0.75 * v);
+  }
+
   /** Point the Sun; the shadow box sits on the player, snapped to texels so it never swims. */
   setSun(dir: Dir, focus: THREE.Vector3) {
     this.sunDir.set(dir.x, dir.y, dir.z).normalize();
@@ -205,7 +269,32 @@ export class Stage {
     this.camera.updateProjectionMatrix();
   }
 
+  /** Split the view between the two cameras; the higher the camera, the further out. */
+  private syncFar() {
+    const c = this.camera;
+    const lift = Math.max(0, c.position.y - 40);
+    const near = 0.1 + lift * 0.02;
+    const split = 2000 + lift * 5;
+    if (c.near !== near || c.far !== split) {
+      c.near = near;
+      c.far = split;
+      c.updateProjectionMatrix();
+    }
+    const f = this.farCamera;
+    c.updateMatrixWorld();
+    f.position.copy(c.position);
+    f.quaternion.copy(c.quaternion);
+    f.fov = c.fov;
+    f.aspect = c.aspect;
+    f.zoom = c.zoom;
+    f.near = split * 0.75;
+    f.far = 420000;
+    f.updateProjectionMatrix();
+    f.updateMatrixWorld();
+  }
+
   render() {
+    this.syncFar();
     this.composer.render();
   }
 }

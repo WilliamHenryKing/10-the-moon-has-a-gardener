@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "source": "NASA LOLA (PGDA): Site01 Connecting ridge, Site04 Shackleton rim 5 m/pix; LDEM_80S_80MPP_ADJ",
+  "basin": {
+    "X": -7525.0,
+    "Y": -11625.0,
+    "lat": -89.54332566620121,
+    "lon": 212.9154597166587,
+    "offset": 1629.4135131835938
+  },
+  "earthAzimuth": 8.0,
+  "relief": 1.6,
+  "moonRadius": 1737400.0,
+  "grids": {
+    "near": {
+      "half": 6000.0,
+      "step": 12.0,
+      "height": {
+        "n": 1000,
+        "offset": 1606.0,
+        "scale": 30.614970633247164,
+        "bytes": 1207914
+      }
+    },
+    "mid": {
+      "half": 40000.0,
+      "step": 80.0,
+      "height": {
+        "n": 1000,
+        "offset": 8494.0,
+        "scale": 7.21535448247393,
+        "bytes": 1297476
+      }
+    },
+    "far": {
+      "half": 150000.0,
+      "step": 400.0,
+      "height": {
+        "n": 750,
+        "offset": 21298.0,
+        "scale": 2.8964092445236935,
+        "bytes": 826387
+      }
+    }
+  },
+  "horizon": {
+    "azimuths": 16,
+    "maxRadians": 0.5,
+    "near": {
+      "half": 6000.0,
+      "step": 48.0,
+      "n": 250,
+      "file": "near-horizon.bin.gz",
+      "layers": 4,
+      "min": -0.25,
+      "max": 0.5
+    },
+    "mid": {
+      "half": 40000.0,
+      "step": 320.0,
+      "n": 250,
+      "file": "mid-horizon.bin.gz",
+      "layers": 4,
+      "min": -0.25,
+      "max": 0.5
+    },
+    "far": {
+      "half": 150000.0,
+      "step": 2000.0,
+      "n": 150,
+      "file": "far-horizon.bin.gz",
+      "layers": 4,
+      "min": -0.25,
+      "max": 0.5
+    },
+    "basin": [
+      0.101, 0.0745, 0.0139, 0.023, -0.0057, -0.0064, 0.0105, 0.0195, -0.0065, -0.0063, -0.0061,
+      0.0791, 0.162, 0.1806, 0.1004, 0.0661
+    ]
+  }
+}

@@ -7,7 +7,9 @@ import type { Terrain } from "../world/terrain";
 // heightfield, keeping the steepest horizon it meets, and compares it with the Sun's height: soft
 // by the width of the Sun's disc, so edges have a true penumbra. Two targets cross-fade between
 // updates, so the shadows sweep smoothly as the Sun circles. The ground (and anything planted)
-// samples it; the garden rules will read the same visibility for their light shares.
+// samples it; the garden rules will read the same visibility for their light shares. Past the
+// basin's edge the march carries on over the real land around it (the near LOLA grid), so the
+// hills to the west-north-west throw their evening shadow across the whole basin.
 
 const VERTEX = /* glsl */ `
   varying vec2 vUv;
@@ -15,11 +17,18 @@ const VERTEX = /* glsl */ `
 
 const FRAGMENT = /* glsl */ `
   uniform sampler2D heights;
+  uniform sampler2D farHeights;
   uniform vec3 sunDir;
   uniform float extent;
+  uniform float farExtent;
   uniform int steps;
   varying vec2 vUv;
-  float heightAt(vec2 p) { return texture2D(heights, clamp(p / (2.0 * extent) + 0.5, 0.0, 1.0)).r; }
+  float heightAt(vec2 p) {
+    vec2 near = p / (2.0 * extent) + 0.5;
+    vec2 far = clamp(p / (2.0 * farExtent) + 0.5, 0.0, 1.0);
+    bool inside = max(abs(p.x), abs(p.y)) < extent;
+    return inside ? textureLod(heights, near, 0.0).r : textureLod(farHeights, far, 0.0).r;
+  }
   void main() {
     vec2 p = (vUv - 0.5) * 2.0 * extent;
     float h0 = heightAt(p) + 0.25;
@@ -50,6 +59,7 @@ export class SunMask {
   private camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   private material: THREE.ShaderMaterial;
   private heightTex: THREE.DataTexture;
+  private farTex: THREE.DataTexture;
   private since = 99;
   private first = true;
 
@@ -59,14 +69,21 @@ export class SunMask {
     size: number,
     private interval: number,
     steps: number,
+    /** The land around the basin: a square grid of heights and its half-width. */
+    far: { n: number; h: Float32Array; half: number },
   ) {
+    const halfFloats = (values: Float32Array, n: number) => {
+      const out = new Uint16Array(n * n);
+      for (let i = 0; i < values.length; i++)
+        out[i] = THREE.DataUtils.toHalfFloat(values[i] as number);
+      const tex = new THREE.DataTexture(out, n, n, THREE.RedFormat, THREE.HalfFloatType);
+      tex.magFilter = tex.minFilter = THREE.LinearFilter;
+      tex.needsUpdate = true;
+      return tex;
+    };
     const { n, heights } = terrain.field;
-    const half = new Uint16Array(n * n);
-    for (let i = 0; i < heights.length; i++)
-      half[i] = THREE.DataUtils.toHalfFloat(heights[i] as number);
-    this.heightTex = new THREE.DataTexture(half, n, n, THREE.RedFormat, THREE.HalfFloatType);
-    this.heightTex.magFilter = this.heightTex.minFilter = THREE.LinearFilter;
-    this.heightTex.needsUpdate = true;
+    this.heightTex = halfFloats(heights, n);
+    this.farTex = halfFloats(far.h, far.n);
     const make = () =>
       new THREE.WebGLRenderTarget(size, size, {
         type: THREE.UnsignedByteType,
@@ -86,8 +103,10 @@ export class SunMask {
       fragmentShader: FRAGMENT,
       uniforms: {
         heights: { value: this.heightTex },
+        farHeights: { value: this.farTex },
         sunDir: { value: new THREE.Vector3(0, 0.2, -1) },
         extent: { value: terrain.half },
+        farExtent: { value: far.half },
         steps: { value: steps },
       },
     });

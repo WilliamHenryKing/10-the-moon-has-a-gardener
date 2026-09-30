@@ -21,6 +21,15 @@ Accepted: CC0; public domain; NASA media (not copyrighted, but no NASA insignia 
 
 Evaluation renders (eight views and a turntable film each, studio lighting) are produced as the `sourced` family: `docs/visual/studio/sourced.jpg` and `assets-src/studio/turntables/sourced-*.mp4` (`node tools/sourcing/index-sourced.mjs`, then the studio renderer with `--only sourced`).
 
+## Acquired (30 September 2026): the real south pole
+
+| Source | What | Licence | Size | Use |
+|---|---|---|---|---|
+| NASA GSFC Planetary Geodesy Data Archive, LOLA 5 m/pix site DEMs (Barker et al.), `Site01_final_adj_5mpp_surf.tif` (Connecting ridge) and `Site04_final_adj_5mpp_surf.tif` (Shackleton rim), pgda.gsfc.nasa.gov/products/78 | 16 km squares of topography at 5 m/pix | NASA data / public domain | 41 MB each | the ground within 6 km of the basin |
+| NASA GSFC PGDA, LOLA polar mosaic `LDEM_80S_80MPP_ADJ.TIF`, pgda.gsfc.nasa.gov/products/90 | 80–90° S at 80 m/pix | NASA data / public domain | 189 MB | everything out to 150 km |
+
+The basin sits on the Connecting ridge between Shackleton and de Gerlache (lat −89.54°, lon 212.9°), on its highest gentle ground, turned so the nearside (and Earth) lies to the game's north. `tools/bake/lola.py` bakes three nested grids (12, 80 and 400 m), exaggerates the relief 1.6× about a plain 10 m under the basin's rim (at true scale the ridge's hills barely clear the rim; NASA's own visualisations of the pole often exaggerate), applies the Moon's curvature, and traces each grid's skyline in 16 directions on the GPU. 4.6 MB ships in `public/lunar/`; sources, hashes and outputs are in `assets.manifest.json`. The source files are git-ignored in `assets-src/lola/`.
+
 ## Refused or reference-only
 
 - Smithsonian 3D scan of Neil Armstrong's Apollo 11 A7-L suit (3d.si.edu): its licence could not be confirmed (the page blocks automated reading and the Open Access API returns no record) — reference only until confirmed.
@@ -28,7 +37,7 @@ Evaluation renders (eight views and a turntable film each, studio lighting) are 
 
 ## Still to fetch
 
-- NASA SVS CGI Moon Kit (`svs.gsfc.nasa.gov/4720`): LROC colour map (`lroc_color_poles_4k/8k.tif`) and LOLA displacement (`ldem_16.tif`), public domain — the server did not answer on 27 September; retry.
+- NASA SVS CGI Moon Kit (`svs.gsfc.nasa.gov/4720`): LROC colour map (`lroc_color_poles_4k/8k.tif`), public domain, for the Moon seen from orbit in the intro — the server did not answer on 27 September; retry. (Topography now comes from LOLA directly, above.)
 - Quaternius Ultimate Space Kit, Environment and Items folders (geodesic dome, habitat pods, solar panels, rocks, crates) and the other three astronauts; Quaternius Modular Sci-Fi MegaKit (CC0) for base interiors.
 - Poly Haven (CC0) materials for suit fabric, rubber, anodised metal and regolith.
 

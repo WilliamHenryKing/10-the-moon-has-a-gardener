@@ -1,15 +1,17 @@
 import * as THREE from "three";
 import { type Dir, earthDirection } from "../world/sky-model";
+import { FAR_LAYER } from "./stage";
 
 // The Moon's sky: black, stars that never twinkle (there is no air), a band of the Milky Way,
 // the Sun as a small blinding disc, and Earth: rendered live from NASA's Blue Marble, cloud and
 // Black Marble maps (public domain; credit NASA Earth Observatory) so its phase always matches
 // the Sun, with cloud shadows, city lights on the night side, sun glint on the oceans and a thin
-// blue atmosphere. Sky objects follow the camera, so they sit at infinity.
+// blue atmosphere. Sky objects follow the camera, so they sit at infinity: in the far layer,
+// beyond the furthest land (146 km), so mountains hide the stars behind them.
 
-const STAR_DISTANCE = 8000;
-const SUN_DISTANCE = 7600;
-const EARTH_DISTANCE = 7000;
+const STAR_DISTANCE = 240000;
+const SUN_DISTANCE = 228000;
+const EARTH_DISTANCE = 210000;
 /** Earth's apparent diameter in degrees (1.9 in reality; enlarged a little for the frame). */
 const EARTH_DIAMETER = 3.4;
 const SUN_DIAMETER = 0.54;
@@ -213,7 +215,10 @@ export class Sky {
     this.earth.scale.setScalar(radius);
     // Tilt Earth's axis for January and turn the face toward the Moon.
     this.earth.rotation.set(0.35, 0, 0.2);
-    this.ready = this.loadEarth();
+    this.ready = this.loadEarth().then(() => {
+      this.group.traverse((o) => o.layers.set(FAR_LAYER));
+    });
+    this.group.traverse((o) => o.layers.set(FAR_LAYER));
   }
 
   private async loadEarth() {

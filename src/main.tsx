@@ -24,7 +24,13 @@ root.appendChild(canvas);
 const quality = detectQuality(document.createElement("canvas").getContext("webgl2"));
 
 /** Automated evidence and films: step time deterministically (?e2e only). */
-const test = { frozen: false, step: 0, frames: 0 };
+const test = {
+  frozen: false,
+  step: 0,
+  frames: 0,
+  /** A fixed camera (eye, target) for stills and films, instead of the follow camera. */
+  view: null as null | { eye: THREE.Vector3; target: THREE.Vector3 },
+};
 const waiters: { n: number; done: () => void }[] = [];
 
 async function start() {
@@ -103,6 +109,10 @@ async function start() {
 
     focus.set(player.x, player.y, player.z);
     camera.update(dt, focus, player.yaw, player.speed > 0.2);
+    if (test.view) {
+      stage.camera.position.copy(test.view.eye);
+      stage.camera.lookAt(test.view.target);
+    }
     dust.update(dt, stage.renderer.getPixelRatio());
     world.update(dt, focus);
     world.render();
@@ -143,6 +153,16 @@ async function start() {
       },
       setSunTime(t: number) {
         world.time = t;
+      },
+      /** Look from `eye` at `target` ([x, y, z] each); no arguments returns to the follow camera. */
+      view(eye?: number[], target?: number[]) {
+        test.view =
+          eye && target
+            ? {
+                eye: new THREE.Vector3().fromArray(eye),
+                target: new THREE.Vector3().fromArray(target),
+              }
+            : null;
       },
       state() {
         return {
