@@ -9,6 +9,7 @@ const GOOD = new THREE.Color(0.35, 1.0, 0.62);
 const FAIR = new THREE.Color(1.0, 0.78, 0.25);
 const POOR = new THREE.Color(1.0, 0.45, 0.2);
 const NO = new THREE.Color(1.0, 0.18, 0.14);
+const TOOL = new THREE.Color(0.45, 0.8, 1.0);
 
 export class Target {
   readonly mesh: THREE.Mesh;
@@ -58,6 +59,13 @@ export class Target {
       strength: { value: number };
     };
     u.time.value = this.time;
+    if (a && (a.kind === "place" || a.kind === "cannot-place")) {
+      this.mesh.visible = true;
+      this.mesh.position.set(a.x, this.ground(a.x, a.z) + 0.03, a.z);
+      u.colour.value.copy(a.kind === "place" ? TOOL : NO);
+      u.strength.value = 1;
+      return;
+    }
     if (!a || (a.kind !== "plant" && a.kind !== "cannot")) {
       this.mesh.visible = false;
       return;

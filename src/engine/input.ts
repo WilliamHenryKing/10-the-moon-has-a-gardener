@@ -1,6 +1,6 @@
 // Keyboard, mouse, touch and gamepad folded into one intent.
-// - Keyboard: WASD or arrows move, Shift lopes, Space jumps, E interacts, 1–7 pick a seed and
-//   Q / R cycle the pouch.
+// - Keyboard: WASD or arrows move, Shift lopes, Space jumps, E interacts, 1–7 pick a seed, 8 and
+//   9 the shade panels and sprinklers, and Q / R cycle the pouch.
 // - Mouse: drag or pointer-lock to look, wheel to zoom.
 // - Touch: the left half is a floating stick; drag the right half to look.
 // - Gamepad: left stick, right stick, A, X, and the right trigger to lope.
@@ -46,7 +46,7 @@ export function bindInput(target: HTMLElement, active: () => boolean) {
       return;
     keys.add(e.code);
     if (!e.repeat) {
-      const digit = /^Digit([1-7])$/.exec(e.code);
+      const digit = /^Digit([1-9])$/.exec(e.code);
       if (digit) seedSlot = Number(digit[1]) - 1;
       if (e.code === "KeyQ") seedStep = -1;
       if (e.code === "KeyR") seedStep = 1;

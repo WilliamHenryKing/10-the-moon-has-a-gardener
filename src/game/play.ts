@@ -16,8 +16,20 @@ import {
 } from "./garden";
 import { Guide } from "./guide";
 import type { HeightQuery } from "./light";
-import { type Action, describe, nextAction, nextSeed, perform } from "./session";
-import { SPECIES_ORDER, type SpeciesId } from "./species";
+import {
+  type Action,
+  count,
+  describe,
+  type Held,
+  nextAction,
+  nextSeed,
+  perform,
+  TOOLS,
+} from "./session";
+import { SPECIES_ORDER } from "./species";
+
+/** The pouch, in key order: the seven species, then the shade panels and sprinklers. */
+const POUCH: readonly Held[] = [...SPECIES_ORDER, ...TOOLS];
 
 // One round of the game, wired: the garden's rules, what E does, the seed pouch, Mission Control
 // on the radio, the suit's displays and the sounds that go with it all. The scene reads the
@@ -33,7 +45,7 @@ const MILESTONE_SUB: Record<string, string> = {
 
 export class Play {
   readonly garden: Garden = createGarden();
-  selected: SpeciesId = "mooncress";
+  selected: Held = "mooncress";
   /** What E would do right now. */
   action: Action | null = null;
   /** 0 … 1: kneeling to plant, water or gather. */
@@ -76,7 +88,7 @@ export class Play {
       this.react(e);
     }
     this.guide.update(dt, g);
-    if (g.seeds[this.selected] <= 0) this.selected = nextSeed(g, this.selected, SPECIES_ORDER);
+    if (count(g, this.selected) <= 0) this.selected = nextSeed(g, this.selected, POUCH);
 
     this.kneelFor = Math.max(0, this.kneelFor - dt);
     const want = this.kneelFor > 0 ? 1 : 0;
@@ -92,14 +104,14 @@ export class Play {
   private choose(intent: Intent) {
     const g = this.garden;
     if (intent.seedSlot >= 0) {
-      const id = SPECIES_ORDER[intent.seedSlot];
-      if (id && g.seeds[id] > 0) {
+      const id = POUCH[intent.seedSlot];
+      if (id && count(g, id) > 0) {
         if (id !== this.selected) this.sfx("cursor");
         this.selected = id;
       } else this.sfx("denied", { gain: 0.5 });
     }
     if (intent.seedStep) {
-      const next = nextSeed(g, this.selected, SPECIES_ORDER, intent.seedStep);
+      const next = nextSeed(g, this.selected, POUCH, intent.seedStep);
       if (next !== this.selected) this.sfx("cursor");
       this.selected = next;
     }
@@ -115,6 +127,10 @@ export class Play {
       case "water":
       case "harvest":
         this.kneelFor = a.kind === "plant" ? 1.1 : 0.8;
+        break;
+      case "place":
+        this.kneelFor = 1.0;
+        this.sfx("place", { rate: a.tool === "panel" ? 0.8 : 1.1 });
         break;
       case "refill":
         this.sfx("grow", { rate: 0.7, gain: 0.8 });

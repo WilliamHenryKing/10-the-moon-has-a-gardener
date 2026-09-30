@@ -109,3 +109,43 @@ describe("interact does the one sensible thing", () => {
     expect(nextSeed(g, "mooncress", SPECIES_ORDER, -1)).toBe("sunleaf");
   });
 });
+
+describe("the gardener's tools", () => {
+  test("with a panel held, E stands it ahead, square to the gardener", () => {
+    const g = createGarden();
+    g.pickups = [];
+    g.panelsCarried = 1;
+    const a = nextAction(g, flat, 40, 40, 0.5, "panel");
+    expect(a.kind).toBe("place");
+    if (a.kind !== "place") return;
+    expect(a.yaw).toBe(0.5);
+    expect(perform(g, flat, a)).toBe(true);
+    expect(g.panels.length).toBe(1);
+    expect(g.panelsCarried).toBe(0);
+    expect(say(a).ok).toBe(true);
+  });
+
+  test("a sprinkler keeps the plants round it watered", () => {
+    const g = createGarden();
+    g.pickups = [];
+    g.sprinklersCarried = 1;
+    const p = plant(g, flat, "mooncress", 42, 40);
+    if (!p) throw new Error("not planted");
+    const a = nextAction(g, flat, 40, 40, 0, "sprinkler");
+    expect(a.kind).toBe("place");
+    expect(perform(g, flat, a)).toBe(true);
+    for (let t = 0; t < 200; t++) step(g, 1);
+    expect(p.water).toBeGreaterThan(0);
+  });
+
+  test("tools cannot go on the base, and cycling skips what you do not carry", () => {
+    const g = createGarden();
+    g.pickups = [];
+    g.panelsCarried = 1;
+    const a = nextAction(g, flat, 0, 4, 0, "panel");
+    expect(a.kind).toBe("cannot-place");
+    const pouch = [...SPECIES_ORDER, "panel", "sprinkler"] as const;
+    expect(nextSeed(g, "sunleaf", pouch)).toBe("panel");
+    expect(nextSeed(g, "panel", pouch)).toBe("mooncress");
+  });
+});

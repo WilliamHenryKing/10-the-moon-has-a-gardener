@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { Medal } from "../game/garden";
+import type { Held } from "../game/session";
 import type { SpeciesId } from "../game/species";
 
 // What the suit's displays show, published by the game loop a few times a second and read by
@@ -22,7 +23,7 @@ export interface HudState {
   seeds: Record<SpeciesId, number>;
   /** Species the gardener has ever held (the rest show as unknown). */
   known: SpeciesId[];
-  selected: SpeciesId;
+  selected: Held;
   can: number;
   canMax: number;
   panels: number;

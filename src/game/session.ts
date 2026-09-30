@@ -1,5 +1,6 @@
 import { PLACES } from "../world/terrain-gen";
 import {
+  BASE_CLEAR,
   CAN_SIZE,
   canPlant,
   fit,
@@ -7,8 +8,11 @@ import {
   harvest,
   type Plant,
   type PlantRefusal,
+  placePanel,
+  placeSprinkler,
   plant,
   refill,
+  SPRINKLER_RADIUS,
   survey,
   takePickup,
   water,
@@ -28,6 +32,16 @@ export const WATER_POINTS = [
 
 /** How far ahead of the gardener a seed goes in. */
 export const PLANT_AHEAD = 1.25;
+/** How far ahead a shade panel or sprinkler is set down. */
+export const TOOL_AHEAD = 1.8;
+
+/** What the gardener can carry besides seeds. */
+export type Tool = "panel" | "sprinkler";
+export const TOOLS: readonly Tool[] = ["panel", "sprinkler"];
+/** Anything the pouch can hold ready: a species or a tool. */
+export type Held = SpeciesId | Tool;
+export const isTool = (h: Held): h is Tool => h === "panel" || h === "sprinkler";
+export type PlaceRefusal = "base" | "outside" | "too steep";
 const REACH_PICKUP = 2.6;
 const REACH_PLANT = 1.8;
 
@@ -47,7 +61,9 @@ export type Action =
       /** Share of the day the spot is in sunlight, 0 … 1. */
       sun: number;
     }
-  | { kind: "cannot"; species: SpeciesId; x: number; z: number; refusal: PlantRefusal };
+  | { kind: "cannot"; species: SpeciesId; x: number; z: number; refusal: PlantRefusal }
+  | { kind: "place"; tool: Tool; x: number; z: number; yaw: number }
+  | { kind: "cannot-place"; tool: Tool; x: number; z: number; refusal: PlaceRefusal };
 
 /** The gardener faces −Z at yaw 0. */
 export const ahead = (yaw: number) => ({ x: -Math.sin(yaw), z: -Math.cos(yaw) });
@@ -80,7 +96,7 @@ export function nextAction(
   px: number,
   pz: number,
   yaw: number,
-  species: SpeciesId,
+  held: Held,
 ): Action {
   for (const k of g.pickups) {
     if (k.taken || (k.needs && !g.unlocked.has(k.needs))) continue;
@@ -97,6 +113,9 @@ export function nextAction(
     if (g.can < CAN_SIZE && Math.hypot(w.x - px, w.z - pz) < w.r)
       return { kind: "refill", label: w.label };
   const f = ahead(yaw);
+  if (isTool(held))
+    return placement(ground, px + f.x * TOOL_AHEAD, pz + f.z * TOOL_AHEAD, yaw, held);
+  const species = held;
   const x = px + f.x * PLANT_AHEAD;
   const z = pz + f.z * PLANT_AHEAD;
   const refusal = canPlant(g, ground, species, x, z);
@@ -104,6 +123,17 @@ export function nextAction(
   const spot = survey(g, ground, x, z);
   const f2 = fit(species, spot);
   return { kind: "plant", species, x, z, fit: f2.fit, reason: f2.reason, sun: spot.sun };
+}
+
+/** Setting a tool down: anywhere open and level enough, clear of the base. */
+function placement(ground: HeightQuery, x: number, z: number, yaw: number, tool: Tool): Action {
+  let refusal: PlaceRefusal | null = null;
+  if (Math.hypot(x, z) > 200) refusal = "outside";
+  else if (Math.hypot(x - PLACES.pad.x, z - PLACES.pad.z) < BASE_CLEAR) refusal = "base";
+  else if (ground.normalAt(x, z, { x: 0, y: 1, z: 0 }).y < 0.9) refusal = "too steep";
+  return refusal
+    ? { kind: "cannot-place", tool, x, z, refusal }
+    : { kind: "place", tool, x, z, yaw };
 }
 
 /** Carry out an action; true when something happened. */
@@ -119,22 +149,28 @@ export function perform(g: Garden, ground: HeightQuery, a: Action): boolean {
       return water(g, a.plant);
     case "plant":
       return plant(g, ground, a.species, a.x, a.z) !== null;
+    case "place":
+      return a.tool === "panel"
+        ? placePanel(g, ground, { x: a.x, z: a.z, yaw: a.yaw })
+        : placeSprinkler(g, ground, a.x, a.z);
     default:
       return false;
   }
 }
 
-/** The next species in the pouch that has seeds (wrapping), for cycling. */
-export function nextSeed(
-  g: Garden,
-  from: SpeciesId,
-  order: readonly SpeciesId[],
-  dir = 1,
-): SpeciesId {
+/** How many of something the gardener holds. */
+export function count(g: Garden, h: Held) {
+  if (h === "panel") return g.panelsCarried;
+  if (h === "sprinkler") return g.sprinklersCarried;
+  return g.seeds[h];
+}
+
+/** The next thing in the pouch that the gardener has any of (wrapping), for cycling. */
+export function nextSeed<T extends Held>(g: Garden, from: T, order: readonly T[], dir = 1): T {
   const i = order.indexOf(from);
   for (let k = 1; k <= order.length; k++) {
-    const s = order[(i + dir * k + order.length * 8) % order.length] as SpeciesId;
-    if (g.seeds[s] > 0) return s;
+    const s = order[(i + dir * k + order.length * 8) % order.length] as T;
+    if (count(g, s) > 0) return s;
   }
   return from;
 }
@@ -164,6 +200,22 @@ export function describe(a: Action): { verb: string; detail: string; ok: boolean
               : `struggles here: ${a.reason} · ${light}`,
         ok: true,
       };
+    }
+    case "place":
+      return a.tool === "panel"
+        ? { verb: "Stand a shade panel", detail: "its shade falls away from the Sun", ok: true }
+        : {
+            verb: "Set a sprinkler",
+            detail: `keeps plants within ${SPRINKLER_RADIUS} m watered`,
+            ok: true,
+          };
+    case "cannot-place": {
+      const why: Record<PlaceRefusal, string> = {
+        base: "too close to the base",
+        outside: "outside the basin",
+        "too steep": "the ground is too steep",
+      };
+      return { verb: "Can't set it here", detail: why[a.refusal], ok: false };
     }
     case "cannot": {
       const why: Record<PlantRefusal, string> = {

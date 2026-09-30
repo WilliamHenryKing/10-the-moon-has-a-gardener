@@ -121,10 +121,44 @@ function Glyph({ id, size = 18 }: { id: SpeciesId; size?: number }) {
   );
 }
 
+/** Shade panel and sprinkler, drawn in the glyphs' manner. */
+function ToolGlyph({ tool }: { tool: "panel" | "sprinkler" }) {
+  const c = tool === "panel" ? "#d9c9a0" : "#7cc4ff";
+  return (
+    <svg width={22} height={22} viewBox="0 0 20 20" aria-hidden="true">
+      <circle cx="10" cy="10" r="8.5" fill={`${c}22`} stroke={c} strokeWidth="1.4" />
+      {tool === "panel" ? (
+        <path
+          d="M5.5 6 H14.5 V12 H5.5 Z M7 12 V15 M13 12 V15"
+          fill="none"
+          stroke={c}
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+        />
+      ) : (
+        <path
+          d="M10 15 V9 M10 9 C7 7 5.5 7.5 5 9 M10 9 C13 7 14.5 7.5 15 9 M7 5.5 L7.4 6.4 M10 4.5 V5.5 M13 5.5 L12.6 6.4"
+          fill="none"
+          stroke={c}
+          strokeWidth="1.3"
+          strokeLinecap="round"
+        />
+      )}
+    </svg>
+  );
+}
+
+const TOOL_SLOTS = [
+  { tool: "panel", name: "Panels", key: 8 },
+  { tool: "sprinkler", name: "Sprinklers", key: 9 },
+] as const;
+
 function Pouch() {
   const seeds = useHud((s) => s.seeds);
   const known = useHud((s) => s.known);
   const selected = useHud((s) => s.selected);
+  const panels = useHud((s) => s.panels);
+  const sprinklers = useHud((s) => s.sprinklers);
   return (
     <fieldset className="glass pointer-events-auto m-0 flex gap-1 rounded-2xl border-0 p-1.5">
       <legend className="sr-only">Seed pouch</legend>
@@ -157,6 +191,26 @@ function Pouch() {
           </button>
         );
       })}
+      {TOOL_SLOTS.map(({ tool, name, key }) => {
+        const n = tool === "panel" ? panels : sprinklers;
+        if (n <= 0 && selected !== tool) return null;
+        const on = selected === tool;
+        return (
+          <button
+            key={tool}
+            type="button"
+            aria-pressed={on}
+            aria-label={`${name}: ${n} (key ${key})`}
+            onClick={() => pickSeed(key - 1)}
+            className={`relative flex w-[54px] flex-col items-center gap-0.5 rounded-xl px-1 pb-1 pt-1.5 transition ${on ? "bg-white/14 ring-1 ring-sun" : "hover:bg-white/8"}`}
+          >
+            <span className="absolute left-1 top-0.5 text-[9px] font-bold text-dim">{key}</span>
+            <ToolGlyph tool={tool} />
+            <span className="max-w-full truncate text-[10px] leading-tight">{name}</span>
+            <span className="text-[11px] font-bold tabular-nums">{n}</span>
+          </button>
+        );
+      })}
     </fieldset>
   );
 }
@@ -166,8 +220,6 @@ const PIPS = Array.from({ length: 12 }, (_, i) => `pip-${i}`);
 function Kit() {
   const can = useHud((s) => s.can);
   const canMax = useHud((s) => s.canMax);
-  const panels = useHud((s) => s.panels);
-  const sprinklers = useHud((s) => s.sprinklers);
   return (
     <div className="glass pointer-events-none flex flex-col gap-1.5 rounded-2xl px-3 py-2 text-xs">
       <div className="flex items-center gap-2">
@@ -187,12 +239,6 @@ function Kit() {
           ))}
         </div>
       </div>
-      {(panels > 0 || sprinklers > 0) && (
-        <div className="flex gap-3 tabular-nums text-dim">
-          {panels > 0 && <span>Shade panels ×{panels}</span>}
-          {sprinklers > 0 && <span>Sprinklers ×{sprinklers}</span>}
-        </div>
-      )}
     </div>
   );
 }

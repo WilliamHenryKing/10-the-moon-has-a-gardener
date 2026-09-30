@@ -16,6 +16,7 @@ import { Base, DOME } from "./scene/base";
 import { Caches } from "./scene/caches";
 import { Gardener, type Motion, stillMotion } from "./scene/gardener/gardener";
 import { Intro } from "./scene/intro";
+import { KitView } from "./scene/kit";
 import { Lander } from "./scene/lander";
 import { GardenView } from "./scene/plants/garden-view";
 import { Target } from "./scene/target";
@@ -77,7 +78,8 @@ async function start() {
   const caches = new Caches(ground, play.garden.pickups);
   const plants = new GardenView(ground);
   const target = new Target(ground);
-  stage.scene.add(base.group, caches.group, plants.group, target.mesh);
+  const kit = new KitView(ground);
+  stage.scene.add(base.group, caches.group, plants.group, target.mesh, kit.group);
   stage.aoHidden.push(target.mesh);
   caches.onTouchdown = (x, y, z) => {
     for (let i = 0; i < 6; i++)
@@ -265,6 +267,7 @@ async function start() {
     plants.update(play.garden.plants, dt, sunAzimuth(world.time));
     base.update(dt, share);
     caches.update(dt, play.garden.unlocked);
+    kit.update(dt, play.garden);
     target.update(dt, play.action);
     world.update(dt, focus);
     world.render();
