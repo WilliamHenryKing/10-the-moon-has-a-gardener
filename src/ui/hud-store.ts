@@ -33,6 +33,11 @@ export interface HudState {
   medal: Medal | null;
   /** Hide everything (intro, photo mode). */
   hidden: boolean;
+  /** Where the arrival film is: the title card, the descent, or play. */
+  intro: "title" | "descent" | "play";
+  /** The controls card, shown as play begins. */
+  controls: boolean;
+  muted: boolean;
 }
 
 let state: HudState = {
@@ -59,6 +64,9 @@ let state: HudState = {
   banner: null,
   medal: null,
   hidden: false,
+  intro: "play",
+  controls: false,
+  muted: false,
 };
 const listeners = new Set<() => void>();
 
@@ -80,6 +88,13 @@ export function say(who: RadioLine["who"], text: string, hold = 9) {
   const radio = [...state.radio, { id: radioId++, who, text, hold }].slice(-3);
   hud.set({ radio });
 }
+
+/** What the title card's buttons do (main wires them). */
+export const introActions = {
+  begin: () => {},
+  skip: () => {},
+  mute: () => {},
+};
 
 let bannerId = 1;
 export function banner(title: string, sub: string) {

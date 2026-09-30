@@ -12,12 +12,16 @@ import type { HeightQuery } from "./game/light";
 import { Play } from "./game/play";
 import { Player } from "./game/player";
 import { worldReady } from "./loader";
-import { Base } from "./scene/base";
+import { Base, DOME } from "./scene/base";
 import { Caches } from "./scene/caches";
 import { Gardener, type Motion, stillMotion } from "./scene/gardener/gardener";
+import { Intro } from "./scene/intro";
+import { Lander } from "./scene/lander";
 import { GardenView } from "./scene/plants/garden-view";
 import { Target } from "./scene/target";
+import { Arrival } from "./ui/Arrival";
 import { Hud2 } from "./ui/Hud2";
+import { hud, introActions } from "./ui/hud-store";
 import { sunAzimuth } from "./world/sky-model";
 
 // THE MOON HAS A GARDENER (v2): wiring. One world, one gardener, one camera, one clock, one
@@ -34,6 +38,11 @@ canvas.setAttribute(
 root.appendChild(canvas);
 
 const quality = detectQuality(document.createElement("canvas").getContext("webgl2"));
+const params = new URLSearchParams(location.search);
+/** Automated runs skip the arrival film unless they ask for it. */
+const filmed = !params.has("e2e") || params.has("intro");
+/** Where the gardener's lander sets down, west of the pad. */
+const LANDER_AT = { x: -14, z: 13 };
 
 /** Automated evidence and films: step time deterministically (?e2e only). */
 const test = {
@@ -78,20 +87,73 @@ async function start() {
 
   const hudRoot = document.createElement("div");
   root.appendChild(hudRoot);
-  createRoot(hudRoot).render(<Hud2 />);
+  createRoot(hudRoot).render(
+    <>
+      <Hud2 />
+      <Arrival />
+    </>,
+  );
 
+  // The lander faces the dome; the gardener starts at the foot of its ladder, facing away from it.
+  const lander = new Lander();
+  const heading = Math.atan2(DOME.x - LANDER_AT.x, DOME.z - LANDER_AT.z);
+  const site = { x: LANDER_AT.x, y: terrain.heightAt(LANDER_AT.x, LANDER_AT.z), z: LANDER_AT.z };
+  stage.scene.add(lander.root);
+  const intro = new Intro(lander, site, heading);
+  const landerObstacle = { x: site.x, z: site.z, r: 3.1 };
   const player = new Player();
-  player.place(3.5, 7, terrain, 0.35);
+  player.place(
+    site.x + Math.sin(heading) * 6.5,
+    site.z + Math.cos(heading) * 6.5,
+    terrain,
+    heading + Math.PI,
+  );
   const camera = new FollowCamera(stage.camera, terrain);
-  camera.yaw = player.yaw;
-  bindInput(canvas, () => true);
+  // A three-quarter view to begin with, the lander in the edge of the frame.
+  camera.yaw = player.yaw + 0.65;
+  bindInput(canvas, () => intro.phase === "done");
   // Sound starts with the first gesture (browsers insist); M mutes.
   const wake = () => audio.unlock();
+  hud.set({ muted: audio.muted });
+  audio.subscribe((muted) => hud.set({ muted }));
+  introActions.begin = () => {
+    wake();
+    if (intro.phase !== "title") return;
+    intro.begin();
+    hud.set({ intro: "descent" });
+  };
+  introActions.skip = () => intro.skip();
+  introActions.mute = () => {
+    wake();
+    audio.toggleMute();
+  };
   window.addEventListener("pointerdown", wake);
   window.addEventListener("keydown", (e) => {
     wake();
     if (e.code === "KeyM") audio.toggleMute();
+    if (e.code === "Enter" && intro.phase === "title") introActions.begin();
+    if (e.code === "Escape" && intro.phase === "descent") introActions.skip();
   });
+  intro.onTouchdown = () => {
+    for (let i = 0; i < 10; i++)
+      dust.kick(new THREE.Vector3(site.x, site.y, site.z), 2.6, {
+        x: Math.cos(i * 0.63) * 3,
+        z: Math.sin(i * 0.63) * 3,
+      });
+    audio.play("place", { rate: 0.45, gain: 1 });
+  };
+  let controlsFor = 0;
+  if (filmed) {
+    hud.set({ intro: "title", hidden: true });
+    gardener.root.visible = false;
+    // Morning light from the east for the opening shot.
+    world.time = 413;
+  } else {
+    intro.phase = "done";
+    lander.root.visible = true;
+    lander.root.position.set(site.x, site.y, site.z);
+    lander.root.rotation.y = heading;
+  }
 
   gardener.onFootfall = (at, strength) => {
     at.y = terrain.heightAt(at.x, at.z);
@@ -130,6 +192,11 @@ async function start() {
     test.step = 0;
 
     const intent = readIntent();
+    const playing = intro.phase === "done" || intro.phase === "arrive";
+    if (!playing) {
+      intent.moveX = intent.moveY = 0;
+      intent.interact = intent.jump = false;
+    }
     camera.drag(intent.lookX, intent.lookY);
     if (intent.zoom) camera.zoom(intent.zoom);
     const b = camera.basis();
@@ -145,9 +212,19 @@ async function start() {
       },
       dt,
       terrain,
-      [...base.obstacles, ...caches.obstacles],
+      [...base.obstacles, ...caches.obstacles, landerObstacle],
     );
     play.update(dt, intent, player);
+    if (intro.phase === "arrive" && !gardener.root.visible) {
+      gardener.root.visible = true;
+      hud.set({ intro: "play", hidden: false, controls: true });
+      controlsFor = 18;
+      play.start();
+    }
+    if (controlsFor > 0) {
+      controlsFor -= dt;
+      if (controlsFor <= 0) hud.set({ controls: false });
+    }
 
     gardener.root.position.set(player.x, player.y, player.z);
     gardener.root.rotation.y = player.yaw;
@@ -166,6 +243,19 @@ async function start() {
 
     focus.set(player.x, player.y, player.z);
     camera.update(dt, focus, player.yaw, player.speed > 0.2);
+    if (intro.phase !== "done") {
+      intro.update(dt);
+      if (intro.phase === "arrive") {
+        const eye = stage.camera.position.clone();
+        const look = stage.camera
+          .getWorldDirection(new THREE.Vector3())
+          .multiplyScalar(10)
+          .add(eye);
+        intro.finish(eye, look, dt);
+      }
+      stage.camera.position.copy(intro.eye);
+      stage.camera.lookAt(intro.target);
+    }
     if (test.view) {
       stage.camera.position.copy(test.view.eye);
       stage.camera.lookAt(test.view.target);
@@ -191,7 +281,7 @@ async function start() {
     if (first) {
       first = false;
       requestAnimationFrame(() => worldReady());
-      play.start();
+      if (!filmed) play.start();
     }
     requestAnimationFrame(frame);
   };

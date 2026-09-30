@@ -29,7 +29,8 @@ const ice = new THREE.MeshStandardMaterial({
 });
 
 let glowTexture: THREE.Texture | null = null;
-function glow() {
+/** A soft round glow for sprites and light pools. */
+export function glow() {
   if (glowTexture) return glowTexture;
   const c = document.createElement("canvas");
   c.width = c.height = 128;

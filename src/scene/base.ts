@@ -25,7 +25,7 @@ const water = new THREE.MeshStandardMaterial({
 const warm = new THREE.MeshStandardMaterial({
   color: 0xffe2b0,
   emissive: 0xffb45a,
-  emissiveIntensity: 0.9,
+  emissiveIntensity: 0.45,
   roughness: 0.5,
 });
 

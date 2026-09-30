@@ -85,3 +85,23 @@ input[type="range"].sun-range {
 [role="application"]:focus-visible {
   outline-offset: -4px;
 }
+
+/* The title card waits for the arrival veil to lift, then fades up. */
+.title-in {
+  animation: title-in 1.4s ease 0.9s both;
+}
+@keyframes title-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-in {
+    animation: none;
+  }
+}
