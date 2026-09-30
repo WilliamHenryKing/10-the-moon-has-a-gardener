@@ -39,7 +39,7 @@ export class Dust {
         varying float vLife;
         void main() {
           float d = length(gl_PointCoord - 0.5) * 2.0;
-          float a = smoothstep(1.0, 0.2, d) * clamp(vLife * 2.0, 0.0, 1.0) * 0.55;
+          float a = (1.0 - smoothstep(0.2, 1.0, d)) * clamp(vLife * 2.0, 0.0, 1.0) * 0.55;
           gl_FragColor = vec4(vec3(0.42, 0.41, 0.39) * 0.6, a);
         }`,
       transparent: true,

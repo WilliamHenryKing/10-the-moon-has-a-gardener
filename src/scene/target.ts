@@ -32,7 +32,10 @@ export class Target {
         varying vec2 vUv;
         void main() {
           float r = length(vUv - 0.5) * 2.0;
-          float ring = exp(-pow((r - 0.78) * 9.0, 2.0));
+          // Squares written out: pow() of a negative base is NaN on Apple GPUs (black pixels
+          // that the bloom then spreads).
+          float e = (r - 0.78) * 9.0;
+          float ring = exp(-e * e);
           float fill = (1.0 - smoothstep(0.0, 0.78, r)) * 0.18;
           float pulse = 0.75 + 0.25 * sin(time * 4.0);
           float a = (ring * pulse + fill) * strength;

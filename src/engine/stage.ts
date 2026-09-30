@@ -87,6 +87,7 @@ export class Stage {
   /** Sun direction (unit, toward the Sun). */
   readonly sunDir = new THREE.Vector3(0, 0.1, -1);
   private scale = 1;
+  private pendingScale: number | null = null;
   width = 1;
   height = 1;
 
@@ -252,19 +253,22 @@ export class Stage {
   setScale(s: number) {
     const clamped = Math.max(0.5, Math.min(1, s));
     if (Math.abs(clamped - this.scale) < 0.02) return;
-    this.scale = clamped;
-    this.resize(this.width, this.height);
+    // Applied at the start of the next render: resizing clears the canvas, and a resize after a
+    // frame was drawn would show that cleared canvas (a black flash).
+    this.pendingScale = clamped;
   }
 
   get renderScale() {
-    return this.scale;
+    return this.pendingScale ?? this.scale;
   }
 
   resize(w: number, h: number) {
     this.width = Math.max(1, w);
     this.height = Math.max(1, h);
+    const tier = TIERS[this.quality];
+    const budget = Math.sqrt(tier.pixelBudget / (this.width * this.height));
     const ratio =
-      Math.min(window.devicePixelRatio || 1, TIERS[this.quality].pixelRatio) * this.scale;
+      Math.max(0.5, Math.min(window.devicePixelRatio || 1, tier.pixelRatio, budget)) * this.scale;
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(this.width, this.height, false);
     this.composer.setPixelRatio(ratio);
@@ -298,6 +302,11 @@ export class Stage {
   }
 
   render() {
+    if (this.pendingScale !== null) {
+      this.scale = this.pendingScale;
+      this.pendingScale = null;
+      this.resize(this.width, this.height);
+    }
     this.syncFar();
     this.composer.render();
   }

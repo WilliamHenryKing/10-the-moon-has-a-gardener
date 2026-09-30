@@ -112,7 +112,8 @@ function mistMaterial(radius: number) {
         float h = vLocal.y / radius;
         float surf = level + 0.012 * sin(vLocal.x * 2.1 + time * 1.3) * sin(vLocal.z * 1.7 - time);
         float below = 1.0 - smoothstep(surf - 0.015, surf + 0.015, h);
-        float line = exp(-pow((h - surf) * 38.0, 2.0));
+        float e = (h - surf) * 38.0;
+        float line = exp(-e * e);
         float on = step(0.004, level);
         float a = (below * (0.06 + 0.05 * h) + line * 0.4) * on;
         gl_FragColor = vec4(vec3(0.42, 1.0, 0.84) * a * 1.6, a);

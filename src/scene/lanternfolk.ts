@@ -42,7 +42,7 @@ const BELL_FRAGMENT = /* glsl */ `
   varying vec3 vViewDir;
   varying float vH;
   void main() {
-    float rim = pow(1.0 - abs(dot(normalize(vNormalV), vViewDir)), 2.2);
+    float rim = pow(clamp(1.0 - abs(dot(normalize(vNormalV), vViewDir)), 0.0, 1.0), 2.2);
     float veins = 0.5 + 0.5 * sin(vH * 26.0 + pulse * 3.0);
     float a = (0.1 + rim * 0.75 + veins * 0.08) * (0.7 + 0.5 * pulse) * strength;
     gl_FragColor = vec4(colour * a * 2.2, a);

@@ -48,12 +48,14 @@ export class World {
     const tier = TIERS[quality];
     setAnisotropy(Math.min(8, stage.renderer.capabilities.getMaxAnisotropy()));
     const [terrain, maps, lunar] = await Promise.all([Terrain.load(), loadRegolith(), loadLunar()]);
+    // The basin's long shadows: finer and fresher on a strong GPU; a phone gets a lighter pass
+    // (the Sun creeps, and the cross-fade hides the longer interval).
     const mask = new SunMask(
       stage.renderer,
       terrain,
-      quality === "low" ? 384 : 768,
-      quality === "low" ? 0.6 : 0.3,
-      quality === "low" ? 80 : 88,
+      quality === "high" ? 768 : quality === "medium" ? 512 : 384,
+      quality === "high" ? 0.35 : quality === "medium" ? 0.5 : 0.7,
+      quality === "high" ? 88 : 80,
       lunar.grids.near,
     );
     const { material, uniforms } = regolithMaterial(maps, mask);
@@ -89,7 +91,10 @@ export class World {
       this.terrain.half,
     );
     const margin = Math.atan2(s.y, hl) - Math.atan(sky);
-    this.sunClear = THREE.MathUtils.smoothstep(margin, -0.0047, 0.0047);
+    // Eased in time as well as across the Sun's disc: the skyline is sampled coarsely from where
+    // the gardener stands, so near its edge it would otherwise flicker as they walk.
+    const clear = THREE.MathUtils.smoothstep(margin, -0.006, 0.006);
+    this.sunClear += (clear - this.sunClear) * Math.min(1, dt * 2.5);
     this.stage.setSunVisibility(this.sunClear);
     this.mask.update(this.sunVec, dt);
     const cam = this.stage.camera;

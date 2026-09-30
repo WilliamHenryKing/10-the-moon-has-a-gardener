@@ -71,7 +71,7 @@ function stars(count: number) {
       varying vec3 vColor;
       void main() {
         float d = length(gl_PointCoord - 0.5) * 2.0;
-        float a = smoothstep(1.0, 0.0, d);
+        float a = 1.0 - smoothstep(0.0, 1.0, d);
         gl_FragColor = vec4(vColor * a * a, 1.0);
       }`,
     blending: THREE.AdditiveBlending,
@@ -96,7 +96,7 @@ function sunDisc() {
         vec2 p = (vUv - 0.5) * 2.0;
         float r = length(p) / 0.34;
         // The photosphere with limb darkening, then a soft corona glow for the bloom to catch.
-        float disc = r < 1.0 ? (0.4 + 0.6 * sqrt(1.0 - r * r)) * 60.0 : 0.0;
+        float disc = r < 1.0 ? (0.4 + 0.6 * sqrt(max(0.0, 1.0 - r * r))) * 60.0 : 0.0;
         float glow = exp(-max(r - 1.0, 0.0) * 2.6) * 1.4 * step(1.0, r);
         vec3 c = vec3(1.0, 0.97, 0.92) * (disc + glow);
         gl_FragColor = vec4(c, 1.0);
@@ -153,7 +153,8 @@ const EARTH_FRAGMENT = /* glsl */ `
     vec3 surface = albedo * day * (1.0 - 0.55 * shadow);
     vec3 H = normalize(L + V);
     float nh = max(dot(N, H), 0.0);
-    float fresnel = 0.02 + 0.98 * pow(1.0 - max(dot(V, H), 0.0), 5.0);
+    // Every pow() base is kept at or above zero: a negative one is NaN on Apple GPUs.
+    float fresnel = 0.02 + 0.98 * pow(clamp(1.0 - dot(V, H), 0.0, 1.0), 5.0);
     float a2 = 0.012;
     float dd = nh * nh * (a2 - 1.0) + 1.0;
     float ggx = a2 / (PI * dd * dd);
@@ -164,12 +165,14 @@ const EARTH_FRAGMENT = /* glsl */ `
     vec3 color = mix(surface, cloudLit, cloudAlpha);
     float night = 1.0 - smoothstep(-0.1, 0.05, mu);
     float lights = texture2D(nightMap, vUv).r;
-    color += vec3(1.0, 0.66, 0.34) * pow(lights, 1.7) * 1.3 * night * (1.0 - 0.85 * cloudAlpha);
+    color += vec3(1.0, 0.66, 0.34) * pow(max(lights, 0.0), 1.7) * 1.3 * night * (1.0 - 0.85 * cloudAlpha);
     float vn = max(dot(N, V), 0.0);
+    float limb = clamp(1.0 - vn, 0.0, 1.0);
     float lit = smoothstep(-0.2, 0.35, mu);
-    color = mix(color, vec3(0.3, 0.52, 1.0) * max(mu + 0.12, 0.0), pow(1.0 - vn, 2.4) * 0.7 * lit);
-    color += vec3(0.22, 0.42, 1.0) * pow(1.0 - vn, 5.0) * lit * 0.45;
-    color += vec3(1.0, 0.42, 0.16) * exp(-pow(mu / 0.04, 2.0)) * 0.03 * pow(1.0 - vn, 1.5);
+    color = mix(color, vec3(0.3, 0.52, 1.0) * max(mu + 0.12, 0.0), pow(limb, 2.4) * 0.7 * lit);
+    color += vec3(0.22, 0.42, 1.0) * pow(limb, 5.0) * lit * 0.45;
+    float dusk = mu / 0.04;
+    color += vec3(1.0, 0.42, 0.16) * exp(-dusk * dusk) * 0.03 * pow(limb, 1.5);
     gl_FragColor = vec4(color * sunPower, 1.0);
   }`;
 

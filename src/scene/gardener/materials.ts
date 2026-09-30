@@ -52,7 +52,10 @@ const FABRIC_NORMAL = /* glsl */ `
     vec3 r2 = cross(normal, dx);
     float det = dot(dx, r1);
     vec3 grad = sign(det) * (hx * r1 + hy * r2);
-    normal = normalize(abs(det) * normal - grad * 0.00035);
+    // Where the screen derivatives vanish both terms can be zero, and normalize(0) is NaN
+    // (black, spread by the bloom) on Apple GPUs: keep the plain normal there.
+    vec3 bumped = abs(det) * normal - grad * 0.00035;
+    normal = dot(bumped, bumped) > 1e-24 ? normalize(bumped) : normal;
   }
 `;
 
