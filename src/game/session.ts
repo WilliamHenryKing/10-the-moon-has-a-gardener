@@ -63,6 +63,8 @@ export type Action =
     }
   | { kind: "cannot"; species: SpeciesId; x: number; z: number; refusal: PlantRefusal }
   | { kind: "place"; tool: Tool; x: number; z: number; yaw: number }
+  | { kind: "drive" }
+  | { kind: "leave" }
   | { kind: "cannot-place"; tool: Tool; x: number; z: number; refusal: PlaceRefusal };
 
 /** The gardener faces −Z at yaw 0. */
@@ -201,6 +203,10 @@ export function describe(a: Action): { verb: string; detail: string; ok: boolean
         ok: true,
       };
     }
+    case "drive":
+      return { verb: "Drive the rover", detail: "W and S to go, A and D to steer", ok: true };
+    case "leave":
+      return { verb: "Step down", detail: "leave the rover here", ok: true };
     case "place":
       return a.tool === "panel"
         ? { verb: "Stand a shade panel", detail: "its shade falls away from the Sun", ok: true }

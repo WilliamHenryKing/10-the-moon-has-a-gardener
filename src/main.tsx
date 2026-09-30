@@ -11,10 +11,12 @@ import { DOME as DOME_UNITS, medal, oxygenShare } from "./game/garden";
 import type { HeightQuery } from "./game/light";
 import { Play } from "./game/play";
 import { Player } from "./game/player";
+import { RoverBody } from "./game/rover";
 import { worldReady } from "./loader";
 import { Base, DOME, LANDING } from "./scene/base";
-import { Caches } from "./scene/caches";
+import { Caches, glow } from "./scene/caches";
 import { Cairns } from "./scene/cairns";
+import { FarmRover } from "./scene/farm-rover";
 import { Finale } from "./scene/finale";
 import { Gardener, type Motion, stillMotion } from "./scene/gardener/gardener";
 import { Intro } from "./scene/intro";
@@ -174,6 +176,45 @@ async function start() {
   };
   let controlsFor = 0;
 
+  // The farm rover, parked by the pad; drivable once its fuel cell is charged (25%).
+  const roverBody = new RoverBody();
+  roverBody.place(3, 25, 0.35);
+  const rover = new FarmRover(ground);
+  stage.scene.add(rover.root);
+  rover.update(roverBody, 0);
+  let driving = false;
+  let walkingDistance = camera.distance;
+  play.onDrive = (enter) => {
+    driving = enter;
+    if (enter) {
+      walkingDistance = camera.distance;
+      camera.distance = 7.5;
+    } else {
+      // Step down on the driver's side.
+      const c = Math.cos(roverBody.yaw);
+      const s = Math.sin(roverBody.yaw);
+      player.place(roverBody.x - 1.8 * c, roverBody.z + 1.8 * s, terrain, roverBody.yaw);
+      camera.distance = walkingDistance;
+    }
+  };
+  // Suit jets: two small flames under the pack while they fire.
+  const jetFlames = [-1, 1].map((s) => {
+    const f = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: glow(),
+        color: new THREE.Color(1.8, 1.9, 2.4),
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    f.position.set(s * 0.11, 0.98, 0.33);
+    f.scale.set(0.22, 0.55, 1);
+    f.visible = false;
+    gardener.root.add(f);
+    return f;
+  });
+
   // The ending: the Perennial on the landing ring, its colonists, the walk to the airlock.
   const toPad = Math.atan2(-DOME.x, -DOME.z);
   const door = new THREE.Vector3(DOME.x + Math.sin(toPad) * 7.4, 0, DOME.z + Math.cos(toPad) * 7.4);
@@ -298,7 +339,23 @@ async function start() {
     const wx = b.rx * intent.moveX + b.fx * intent.moveY;
     const wz = b.rz * intent.moveX + b.fz * intent.moveY;
     const kneeling = play.kneel > 0.05;
-    if (!finale.cinematic)
+    const blockers = [
+      ...base.obstacles,
+      ...caches.obstacles,
+      landerObstacle,
+      ...(finale.phase === "idle" ? [] : [shipObstacle]),
+    ];
+    player.jets = play.garden.unlocked.has("jets");
+    if (driving && !finale.cinematic) {
+      roverBody.update({ throttle: intent.moveY, steer: intent.moveX }, dt, terrain, blockers);
+      rover.update(roverBody, dt);
+      // The gardener rides in the driving seat.
+      const seat = rover.seatAt();
+      player.x = seat.x;
+      player.z = seat.z;
+      player.y = seat.y - 0.62;
+      player.yaw = roverBody.yaw;
+    } else if (!finale.cinematic)
       player.update(
         {
           x: kneeling ? 0 : wx,
@@ -308,13 +365,10 @@ async function start() {
         },
         dt,
         terrain,
-        [
-          ...base.obstacles,
-          ...caches.obstacles,
-          landerObstacle,
-          ...(finale.phase === "idle" ? [] : [shipObstacle]),
-        ],
+        [...blockers, { x: roverBody.x, z: roverBody.z, r: 1.8 }],
       );
+    play.rover.driving = driving;
+    play.rover.near = !driving && Math.hypot(player.x - roverBody.x, player.z - roverBody.z) < 3.4;
     play.update(dt, intent, player);
     if (intro.phase === "arrive" && !gardener.root.visible) {
       gardener.root.visible = true;
@@ -329,11 +383,15 @@ async function start() {
 
     gardener.root.position.set(player.x, player.y, player.z);
     gardener.root.rotation.y = player.yaw;
-    motion.speed = player.speed;
-    motion.grounded = player.grounded;
+    motion.speed = driving ? 0 : player.speed;
+    motion.grounded = driving || player.grounded;
     motion.vy = player.grounded ? player.landing : player.vy;
     motion.turn = player.turn;
-    motion.kneel = play.kneel;
+    motion.kneel = driving ? 0.85 : play.kneel;
+    for (const f of jetFlames) {
+      f.visible = player.thrusting;
+      f.scale.set(0.2 + Math.random() * 0.06, 0.45 + Math.random() * 0.25, 1);
+    }
     motion.lift = finale.lift;
     if (finale.cinematic) gardener.helmetOff = finale.helmet;
     const rel = Math.atan2(Math.sin(camera.yaw - player.yaw), Math.cos(camera.yaw - player.yaw));
@@ -344,8 +402,13 @@ async function start() {
     dustLevel = Math.min(0.85, dustLevel + player.speed * dt * 0.002);
     gardener.dust = dustLevel;
 
-    focus.set(player.x, player.y, player.z);
-    camera.update(dt, focus, player.yaw, player.speed > 0.2);
+    if (driving) {
+      focus.set(roverBody.x, terrain.heightAt(roverBody.x, roverBody.z) + 0.4, roverBody.z);
+      camera.update(dt, focus, roverBody.yaw, Math.abs(roverBody.speed) > 0.3);
+    } else {
+      focus.set(player.x, player.y, player.z);
+      camera.update(dt, focus, player.yaw, player.speed > 0.2);
+    }
     if (intro.phase !== "done") {
       intro.update(dt);
       if (intro.phase === "arrive") {

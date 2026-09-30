@@ -57,6 +57,10 @@ export class Play {
   private started = false;
   /** Every garden event, for the scene (the finale listens for the dome filling). */
   onEvent: ((e: GardenEvent) => void) | null = null;
+  /** The rover: whether the gardener is at it or in it (set by the scene each frame). */
+  rover = { near: false, driving: false };
+  /** Getting in (true) or out (false) of the rover. */
+  onDrive: ((enter: boolean) => void) | null = null;
 
   constructor(
     private ground: HeightQuery,
@@ -78,8 +82,12 @@ export class Play {
     const g = this.garden;
     if (!this.started) return;
     this.choose(intent);
-    const busy = this.kneelFor > 0 || !player.grounded;
-    this.action = nextAction(g, this.ground, player.x, player.z, player.yaw, this.selected);
+    const busy = this.kneelFor > 0 || (!player.grounded && !this.rover.driving);
+    this.action = this.rover.driving
+      ? { kind: "leave" }
+      : this.rover.near && g.unlocked.has("rover")
+        ? { kind: "drive" }
+        : nextAction(g, this.ground, player.x, player.z, player.yaw, this.selected);
     const pressed = intent.interact && !this.wasInteract;
     this.wasInteract = intent.interact;
     if (pressed && !busy) this.act(this.action);
@@ -121,6 +129,11 @@ export class Play {
   }
 
   private act(a: Action) {
+    if (a.kind === "drive" || a.kind === "leave") {
+      this.onDrive?.(a.kind === "drive");
+      this.sfx("ui");
+      return;
+    }
     if (!perform(this.garden, this.ground, a)) {
       this.sfx("denied", { gain: 0.7 });
       return;

@@ -12,6 +12,10 @@ const ACCEL = 2.8;
 const BRAKE = 3.6;
 const AIR_ACCEL = 0.7;
 const JUMP_SPEED = 2.35;
+/** Suit jets: upward push (m/s²), the fastest climb, and seconds of fuel per flight. */
+const JET_ACCEL = 3.6;
+const JET_CLIMB = 3.2;
+export const JET_FUEL = 1.8;
 const TURN_RATE = 5;
 /** Slopes steeper than this (radians) cannot be stood on. */
 const STEEP = 0.56;
@@ -55,6 +59,11 @@ export class Player {
   /** Vertical speed at the last landing (negative), for the landing squash. */
   landing = 0;
   private jumpHeld = false;
+  /** Suit jets, once unlocked: hold jump in the air to climb while the fuel lasts. */
+  jets = false;
+  fuel = JET_FUEL;
+  /** Whether the jets are firing this frame. */
+  thrusting = false;
   private n = { x: 0, y: 1, z: 0 };
 
   place(x: number, z: number, ground: GroundQuery, yaw = 0) {
@@ -119,6 +128,13 @@ export class Player {
       this.grounded = false;
     }
     this.jumpHeld = input.jump;
+    this.thrusting = false;
+    if (this.grounded) this.fuel = Math.min(JET_FUEL, this.fuel + dt * 1.5);
+    else if (this.jets && input.jump && this.fuel > 0) {
+      this.thrusting = true;
+      this.fuel = Math.max(0, this.fuel - dt);
+      this.vy = Math.min(JET_CLIMB, this.vy + (JET_ACCEL + GRAVITY) * dt);
+    }
 
     // Move, keep within the basin, push out of obstacles.
     this.x += this.vx * dt;
