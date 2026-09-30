@@ -14,18 +14,20 @@ import { Player } from "./game/player";
 import { worldReady } from "./loader";
 import { Base, DOME, LANDING } from "./scene/base";
 import { Caches } from "./scene/caches";
+import { Cairns } from "./scene/cairns";
 import { Finale } from "./scene/finale";
 import { Gardener, type Motion, stillMotion } from "./scene/gardener/gardener";
 import { Intro } from "./scene/intro";
 import { KitView } from "./scene/kit";
 import { Lander } from "./scene/lander";
+import { Lanternfolk } from "./scene/lanternfolk";
 import { Perennial } from "./scene/perennial";
 import { GardenView } from "./scene/plants/garden-view";
 import { Target } from "./scene/target";
 import { Arrival } from "./ui/Arrival";
 import { Ending } from "./ui/Ending";
 import { Hud2 } from "./ui/Hud2";
-import { hud, introActions } from "./ui/hud-store";
+import { hud, introActions, say } from "./ui/hud-store";
 import { sunAzimuth } from "./world/sky-model";
 
 // THE MOON HAS A GARDENER (v2): wiring. One world, one gardener, one camera, one clock, one
@@ -83,6 +85,28 @@ async function start() {
   const target = new Target(ground);
   const kit = new KitView(ground);
   stage.scene.add(base.group, caches.group, plants.group, target.mesh, kit.group);
+  // Life in the basin: the lanternfolk on the rim, the builder on the ridge.
+  const folk = new Lanternfolk(ground, quality === "low" ? 4 : 7);
+  const cairns = new Cairns(ground, 120, -138);
+  stage.scene.add(folk.group, cairns.group);
+  stage.aoHidden.push(folk.group);
+  folk.onGift = (x, z) => {
+    const gift = {
+      id: "gift",
+      x,
+      z,
+      label: "Lanternfolk gift",
+      seeds: { orchid: 2 },
+      taken: false,
+    };
+    play.garden.pickups.push(gift);
+    caches.add(gift);
+    say(
+      "Mission Control",
+      "Gardener, they left something by your garden. The suit reads it as a seed. Go and see.",
+      12,
+    );
+  };
   stage.aoHidden.push(target.mesh);
   caches.onTouchdown = (x, y, z) => {
     for (let i = 0; i < 6; i++)
@@ -353,6 +377,17 @@ async function start() {
     base.update(dt, share);
     caches.update(dt, play.garden.unlocked);
     kit.update(dt, play.garden);
+    folk.update(
+      dt,
+      world.sunClear,
+      play.garden.plants.filter((p) => p.bloomed),
+    );
+    cairns.update(
+      dt,
+      stage.camera.position,
+      stage.camera.getWorldDirection(new THREE.Vector3()),
+      focus,
+    );
     target.update(dt, play.action);
     world.update(dt, focus);
     world.render();

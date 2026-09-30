@@ -66,6 +66,8 @@ const SHADOW_HALF = 34;
 const SHADOW_REACH = 420;
 /** The fill from below: sunlit regolith all around. */
 const GROUND_BOUNCE = new THREE.Color(0x6e6a64);
+/** The fill from above: Earthshine, blue-grey. */
+const EARTHSHINE = new THREE.Color(0x3d4555);
 
 export class Stage {
   readonly renderer: THREE.WebGLRenderer;
@@ -75,7 +77,7 @@ export class Stage {
   readonly farCamera = new THREE.PerspectiveCamera(55, 1, 1500, 420000);
   readonly sun = new THREE.DirectionalLight(0xfff6ea, SUN);
   /** Light bounced from the sunlit ground around (and a little Earthshine): shadows stay readable. */
-  readonly fill = new THREE.HemisphereLight(0x3d4555, GROUND_BOUNCE, 1.15);
+  readonly fill = new THREE.HemisphereLight(EARTHSHINE, GROUND_BOUNCE, 1.15);
   readonly composer: EffectComposer;
   readonly ao: GTAOPass;
   readonly bloom: UnrealBloomPass;
@@ -226,7 +228,9 @@ export class Stage {
    * light bounced off sunlit ground with it (Earthshine stays). */
   setSunVisibility(v: number) {
     this.sun.intensity = SUN * v;
-    this.fill.groundColor.copy(GROUND_BOUNCE).multiplyScalar(0.25 + 0.75 * v);
+    this.fill.groundColor.copy(GROUND_BOUNCE).multiplyScalar(0.3 + 0.7 * v);
+    // In the hills' shadow, Earthshine is the light you see by: let it carry the scene.
+    this.fill.color.copy(EARTHSHINE).multiplyScalar(1 + 1.6 * (1 - v));
   }
 
   /** Point the Sun; the shadow box sits on the player, snapped to texels so it never swims. */

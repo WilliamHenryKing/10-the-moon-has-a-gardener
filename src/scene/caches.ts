@@ -199,6 +199,38 @@ function drill() {
   return { root: g, beaconY: h + 0.5, obstacle: 1.8 };
 }
 
+/** What the lanternfolk left: a seed pod that glows from inside, on three pale leaves. */
+function gift() {
+  const g = new THREE.Group();
+  const pod = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 20, 14),
+    new THREE.MeshStandardMaterial({
+      color: 0xbff8ff,
+      emissive: 0x4fd8ff,
+      emissiveIntensity: 1.6,
+      roughness: 0.3,
+    }),
+  );
+  pod.scale.set(1, 1.5, 1);
+  pod.position.y = 0.24;
+  g.add(pod);
+  for (let k = 0; k < 3; k++) {
+    const leaf = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 10, 6),
+      new THREE.MeshStandardMaterial({ color: 0xd9f2ea, roughness: 0.6 }),
+    );
+    leaf.scale.set(0.35, 0.06, 1);
+    leaf.position.set(
+      Math.sin((k * Math.PI * 2) / 3) * 0.16,
+      0.04,
+      Math.cos((k * Math.PI * 2) / 3) * 0.16,
+    );
+    leaf.rotation.y = (k * Math.PI * 2) / 3;
+    g.add(leaf);
+  }
+  return { root: g, beaconY: 0.9, obstacle: 0 };
+}
+
 /** The supply pod: a squat capsule on landing legs, thrusters underneath. */
 function pod() {
   const g = new THREE.Group();
@@ -226,6 +258,7 @@ const BUILDERS: Record<string, () => { root: THREE.Group; beaconY: number; obsta
   earthside: marker,
   icedrill: drill,
   supply: pod,
+  gift,
 };
 
 interface Item {
@@ -237,6 +270,7 @@ interface Item {
 }
 
 const AMBER = new THREE.Color(1.0, 0.62, 0.22);
+const CYAN = new THREE.Color(0.35, 0.9, 1.0);
 const LOCKED = new THREE.Color(0.9, 0.12, 0.08);
 
 export class Caches {
@@ -249,30 +283,11 @@ export class Caches {
   /** Called once when the pod touches down (for the dust). */
   onTouchdown: ((x: number, y: number, z: number) => void) | null = null;
 
-  constructor(ground: Ground, pickups: readonly Pickup[]) {
-    for (const p of pickups) {
-      const build = BUILDERS[p.id];
-      if (!build) continue;
-      const made = build();
-      const y = ground(p.x, p.z);
-      made.root.position.set(p.x, y - (p.id === "probe" ? 0.25 : 0), p.z);
-      shadowed(made.root);
-      const beacon = new THREE.Sprite(
-        new THREE.SpriteMaterial({
-          map: glow(),
-          color: AMBER.clone(),
-          transparent: true,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-        }),
-      );
-      beacon.position.set(0, made.beaconY, 0);
-      beacon.scale.setScalar(1.6);
-      made.root.add(beacon);
-      this.group.add(made.root);
-      this.items.push({ pickup: p, root: made.root, beacon, ground: y, obstacle: made.obstacle });
-      if (p.id === "supply") made.root.visible = false;
-    }
+  constructor(
+    private ground: Ground,
+    pickups: readonly Pickup[],
+  ) {
+    for (const p of pickups) this.add(p);
     this.flame = new THREE.Sprite(
       new THREE.SpriteMaterial({
         map: glow(),
@@ -287,10 +302,37 @@ export class Caches {
     this.group.add(this.flame);
   }
 
+  /** A cache, with its prop and beacon. */
+  add(p: Pickup) {
+    const build = BUILDERS[p.id];
+    if (!build) return;
+    const made = build();
+    const y = this.ground(p.x, p.z);
+    made.root.position.set(p.x, y - (p.id === "probe" ? 0.25 : 0), p.z);
+    shadowed(made.root);
+    const beacon = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: glow(),
+        color: AMBER.clone(),
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    beacon.position.set(0, made.beaconY, 0);
+    beacon.scale.setScalar(1.6);
+    made.root.add(beacon);
+    this.group.add(made.root);
+    this.items.push({ pickup: p, root: made.root, beacon, ground: y, obstacle: made.obstacle });
+    if (p.id === "supply") made.root.visible = false;
+  }
+
   /** Circles the gardener cannot walk through (the pod only once it is down). */
   get obstacles() {
     return this.items
-      .filter((i) => i.root.visible && !(i.pickup.id === "supply" && this.descent < 7))
+      .filter(
+        (i) => i.obstacle > 0 && i.root.visible && !(i.pickup.id === "supply" && this.descent < 7),
+      )
       .map((i) => ({ x: i.pickup.x, z: i.pickup.z, r: i.obstacle }));
   }
 
@@ -307,7 +349,8 @@ export class Caches {
       const pulse = open
         ? 0.55 + 0.45 * Math.sin(this.time * 3.2 + p.x) ** 2
         : 0.25 + 0.2 * Math.sin(this.time * 1.1 + p.z) ** 2;
-      mat.color.copy(open ? AMBER : LOCKED).multiplyScalar(pulse * (open ? 2.4 : 1.2));
+      const hue = p.id === "gift" ? CYAN : AMBER;
+      mat.color.copy(open ? hue : LOCKED).multiplyScalar(pulse * (open ? 2.4 : 1.2));
       it.beacon.scale.setScalar(open ? 1.2 + pulse * 0.8 : 1.1);
       if (p.id === "supply") this.updatePod(it, dt, open);
     }
