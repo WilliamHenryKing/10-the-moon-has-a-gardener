@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { Plant } from "../../game/garden";
 import { SPECIES_ORDER, type SpeciesId } from "../../game/species";
 import { bell, blade, frond, merge, star, stem } from "./geometry";
@@ -500,6 +501,11 @@ interface Live {
   seed: number;
 }
 
+const smooth01 = (a: number, b: number, x: number) => {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
 export class GardenView {
   readonly group = new THREE.Group();
   private views = new Map<SpeciesId, SpeciesView>();
@@ -510,6 +516,8 @@ export class GardenView {
   private up = new THREE.Vector3(0, 1, 0);
   private time = 0;
   private colour = new THREE.Color();
+  /** The first two leaves, shown until the species' own shoots take over. */
+  private sprout: THREE.InstancedMesh;
 
   constructor(private ground: (x: number, z: number) => number) {
     for (const id of SPECIES_ORDER) {
@@ -547,6 +555,28 @@ export class GardenView {
     this.soil.receiveShadow = true;
     this.soil.frustumCulled = false;
     this.group.add(this.soil);
+    const stem = new THREE.CylinderGeometry(0.006, 0.009, 0.09, 5);
+    stem.translate(0, 0.045, 0);
+    const leaf = new THREE.SphereGeometry(1, 8, 4);
+    leaf.scale(0.034, 0.007, 0.017);
+    const left = leaf.clone().translate(0.031, 0.09, 0);
+    const right = leaf.clone().translate(-0.031, 0.092, 0);
+    const parts = [stem, left, right].map((g) => g.toNonIndexed());
+    for (const g of parts) g.deleteAttribute("uv");
+    this.sprout = new THREE.InstancedMesh(
+      mergeGeometries(parts) ?? stem,
+      new THREE.MeshStandardMaterial({
+        color: 0x9be6a8,
+        roughness: 0.55,
+        emissive: 0x123f22,
+        emissiveIntensity: 0.5,
+      }),
+      MAX * 7,
+    );
+    this.sprout.count = 0;
+    this.sprout.castShadow = true;
+    this.sprout.frustumCulled = false;
+    this.group.add(this.sprout);
   }
 
   update(plants: readonly Plant[], dt: number, sunAzimuth: number) {
@@ -556,6 +586,7 @@ export class GardenView {
       { plant: Plant; state: PoseState; matrix: THREE.Matrix4; seed: number }[]
     >();
     let s = 0;
+    let sprouts = 0;
     for (const p of plants) {
       let l = this.live.get(p.id);
       if (!l) {
@@ -596,9 +627,16 @@ export class GardenView {
       this.colour.setRGB(0.1, 0.098, 0.094).multiplyScalar(p.water > 0 ? 0.55 : 1.4);
       this.soil.setColorAt(s, this.colour);
       s++;
+      if (l.growth < 0.3) {
+        const k = (1 - smooth01(0.1, 0.3, l.growth)) * (1 + l.growth * 3) * 2.2;
+        this.matrix.compose(new THREE.Vector3(p.x, y, p.z), this.q, new THREE.Vector3(k, k, k));
+        this.sprout.setMatrixAt(sprouts++, this.matrix);
+      }
     }
     for (const [id, v] of this.views) v.update(bySpecies.get(id) ?? []);
     this.soil.count = s;
+    this.sprout.count = sprouts;
+    this.sprout.instanceMatrix.needsUpdate = true;
     this.soil.instanceMatrix.needsUpdate = true;
     if (this.soil.instanceColor) this.soil.instanceColor.needsUpdate = true;
     for (const id of this.live.keys()) if (!plants.some((p) => p.id === id)) this.live.delete(id);

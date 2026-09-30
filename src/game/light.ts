@@ -90,7 +90,8 @@ export function sunShare(ground: HeightQuery, x: number, z: number, panels: read
     sunDirection(((i + 0.5) / SAMPLES) * DAY_SECONDS, s);
     const hl = Math.hypot(s.x, s.z);
     const sunTan = s.y / hl;
-    if (horizon(ground, x, z, y, s.x / hl, s.z / hl) >= sunTan) continue;
+    // Far enough to take in the hills beyond the basin (when the ground query reaches them).
+    if (horizon(ground, x, z, y, s.x / hl, s.z / hl, 6000) >= sunTan) continue;
     if (panels.some((p) => panelBlocks(p, ground, x, y, z, s))) continue;
     lit++;
   }

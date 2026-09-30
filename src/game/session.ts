@@ -37,7 +37,16 @@ export type Action =
   | { kind: "harvest"; plant: Plant }
   | { kind: "water"; plant: Plant }
   | { kind: "dry"; plant: Plant }
-  | { kind: "plant"; species: SpeciesId; x: number; z: number; fit: number; reason: string }
+  | {
+      kind: "plant";
+      species: SpeciesId;
+      x: number;
+      z: number;
+      fit: number;
+      reason: string;
+      /** Share of the day the spot is in sunlight, 0 … 1. */
+      sun: number;
+    }
   | { kind: "cannot"; species: SpeciesId; x: number; z: number; refusal: PlantRefusal };
 
 /** The gardener faces −Z at yaw 0. */
@@ -94,7 +103,7 @@ export function nextAction(
   if (refusal) return { kind: "cannot", species, x, z, refusal };
   const spot = survey(g, ground, x, z);
   const f2 = fit(species, spot);
-  return { kind: "plant", species, x, z, fit: f2.fit, reason: f2.reason };
+  return { kind: "plant", species, x, z, fit: f2.fit, reason: f2.reason, sun: spot.sun };
 }
 
 /** Carry out an action; true when something happened. */
@@ -143,17 +152,19 @@ export function describe(a: Action): { verb: string; detail: string; ok: boolean
       return { verb: "Water", detail: SPECIES[a.plant.species].name, ok: true };
     case "dry":
       return { verb: "The can is empty", detail: "refill at the tank or the ice", ok: false };
-    case "plant":
+    case "plant": {
+      const light = `sunlit ${Math.round(a.sun * 100)}% of the day`;
       return {
         verb: `Plant ${SPECIES[a.species].name}`,
         detail:
           a.fit >= 0.75
-            ? `a good spot: ${a.reason}`
+            ? `thrives here · ${light}`
             : a.fit >= 0.4
-              ? `it will grow slowly: ${a.reason}`
-              : `a poor spot: ${a.reason}`,
+              ? `grows slowly here: ${a.reason} · ${light}`
+              : `struggles here: ${a.reason} · ${light}`,
         ok: true,
       };
+    }
     case "cannot": {
       const why: Record<PlantRefusal, string> = {
         "no seeds": `no ${SPECIES[a.species].name} seeds left`,

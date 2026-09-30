@@ -10,6 +10,8 @@ export class FollowCamera {
   yaw = 0;
   pitch = 0.16;
   distance = 3.9;
+  /** Over the right shoulder, so the ground just ahead of the gardener stays in view. */
+  side = 0.6;
   private curDistance = 3.9;
   private pivot = new THREE.Vector3();
   private idle = 10;
@@ -45,7 +47,13 @@ export class FollowCamera {
       d = Math.atan2(Math.sin(d), Math.cos(d));
       this.yaw += d * Math.min(1, dt * 1.2);
     }
-    const goal = new THREE.Vector3(target.x, target.y + 1.5, target.z);
+    // The shoulder offset narrows as the camera pulls back (a wide view needs none).
+    const side = this.side * THREE.MathUtils.clamp(1.4 - this.distance / 10, 0.2, 1);
+    const goal = new THREE.Vector3(
+      target.x + Math.cos(this.yaw) * side,
+      target.y + 1.5,
+      target.z - Math.sin(this.yaw) * side,
+    );
     if (this.pivot.lengthSq() === 0) this.pivot.copy(goal);
     this.pivot.lerp(goal, Math.min(1, dt * 7));
     const dir = new THREE.Vector3(

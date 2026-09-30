@@ -114,7 +114,7 @@ export class Guide {
     if (this.since > 7 && g.plants.length === 0)
       this.once(
         "how-to-plant",
-        "Step off the pad, face open ground and press E. Mooncress is happy almost anywhere.",
+        "Step off the pad and face open ground: the ring shows where the seed goes. Green means it will thrive. Press E to plant.",
       );
     if (g.can <= 1 && g.plants.length > 0)
       this.once(

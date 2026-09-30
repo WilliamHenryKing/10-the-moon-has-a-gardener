@@ -38,9 +38,9 @@ export const SPECIES: Record<SpeciesId, Species> = {
   mooncress: {
     id: "mooncress",
     name: "Mooncress",
-    want: "half sun",
-    hint: "Hardy and quick. Likes about half the day in sunlight: open ground near a hill or a crater rim.",
-    sun: [0.3, 0.75],
+    want: "some sun",
+    hint: "Hardy and quick: grows almost anywhere the Sun reaches for a quarter of the day or more. The easy first crop.",
+    sun: [0.25, 0.92],
     earth: false,
     wet: false,
     grow: 55,
