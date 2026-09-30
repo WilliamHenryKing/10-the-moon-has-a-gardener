@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { pickSeed } from "../engine/input";
+import { pickSeed, setButton } from "../engine/input";
 import { SPECIES, SPECIES_ORDER, type SpeciesId } from "../game/species";
 import { type RadioLine, useHud } from "./hud-store";
 
@@ -176,7 +176,7 @@ function Pouch() {
                 : `Unknown seed (key ${i + 1})`
             }
             onClick={() => pickSeed(i)}
-            className={`relative flex w-[54px] flex-col items-center gap-0.5 rounded-xl px-1 pb-1 pt-1.5 transition ${on ? "bg-white/14 ring-1 ring-sun" : "hover:bg-white/8"} ${has && seeds[id] > 0 ? "" : "opacity-45"}`}
+            className={`relative flex w-[38px] flex-col items-center sm:w-[54px] gap-0.5 rounded-xl px-1 pb-1 pt-1.5 transition ${on ? "bg-white/14 ring-1 ring-sun" : "hover:bg-white/8"} ${has && seeds[id] > 0 ? "" : "opacity-45"}`}
           >
             <span className="absolute left-1 top-0.5 text-[9px] font-bold text-dim">{i + 1}</span>
             {has ? (
@@ -184,7 +184,7 @@ function Pouch() {
             ) : (
               <span className="grid h-[22px] w-[22px] place-items-center text-sm text-dim">?</span>
             )}
-            <span className="max-w-full truncate text-[10px] leading-tight">
+            <span className="hidden max-w-full truncate text-[10px] leading-tight sm:block">
               {has ? SPECIES[id].name : "—"}
             </span>
             <span className="text-[11px] font-bold tabular-nums">{has ? seeds[id] : ""}</span>
@@ -202,11 +202,13 @@ function Pouch() {
             aria-pressed={on}
             aria-label={`${name}: ${n} (key ${key})`}
             onClick={() => pickSeed(key - 1)}
-            className={`relative flex w-[54px] flex-col items-center gap-0.5 rounded-xl px-1 pb-1 pt-1.5 transition ${on ? "bg-white/14 ring-1 ring-sun" : "hover:bg-white/8"}`}
+            className={`relative flex w-[38px] flex-col items-center sm:w-[54px] gap-0.5 rounded-xl px-1 pb-1 pt-1.5 transition ${on ? "bg-white/14 ring-1 ring-sun" : "hover:bg-white/8"}`}
           >
             <span className="absolute left-1 top-0.5 text-[9px] font-bold text-dim">{key}</span>
             <ToolGlyph tool={tool} />
-            <span className="max-w-full truncate text-[10px] leading-tight">{name}</span>
+            <span className="hidden max-w-full truncate text-[10px] leading-tight sm:block">
+              {name}
+            </span>
             <span className="text-[11px] font-bold tabular-nums">{n}</span>
           </button>
         );
@@ -283,6 +285,40 @@ function Banner() {
   );
 }
 
+/** On touch screens: the two buttons a thumb needs (the left half of the screen is the stick). */
+function TouchButtons() {
+  const prompt = useHud((s) => s.prompt);
+  const press = (name: "interact" | "jump") => ({
+    onPointerDown: (e: React.PointerEvent) => {
+      e.preventDefault();
+      setButton(name, true);
+    },
+    onPointerUp: () => setButton(name, false),
+    onPointerCancel: () => setButton(name, false),
+    onPointerLeave: () => setButton(name, false),
+  });
+  return (
+    <div className="pointer-events-auto fixed right-4 bottom-44 z-20 flex flex-col items-center gap-3 [@media(pointer:fine)]:hidden">
+      <button
+        type="button"
+        aria-label={prompt ? prompt.verb : "Act"}
+        className="grid h-16 w-16 touch-none select-none place-items-center rounded-full border border-sun/60 bg-black/45 text-sm font-bold text-sun backdrop-blur-sm active:bg-sun/25"
+        {...press("interact")}
+      >
+        Act
+      </button>
+      <button
+        type="button"
+        aria-label="Jump"
+        className="grid h-12 w-12 touch-none select-none place-items-center rounded-full border border-ink/40 bg-black/45 text-xs font-semibold backdrop-blur-sm active:bg-white/15"
+        {...press("jump")}
+      >
+        Jump
+      </button>
+    </div>
+  );
+}
+
 export function Hud2() {
   const hidden = useHud((s) => s.hidden);
   return (
@@ -310,6 +346,7 @@ export function Hud2() {
           </div>
         </div>
       </div>
+      {!hidden && <TouchButtons />}
     </div>
   );
 }

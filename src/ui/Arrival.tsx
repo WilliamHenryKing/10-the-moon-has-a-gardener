@@ -67,7 +67,17 @@ const KEYS: [string, string][] = [
   ["M", "sound on or off"],
 ];
 
+const TOUCH: [string, string][] = [
+  ["Left side", "drag to walk"],
+  ["Right side", "drag to look around"],
+  ["Act", "plant · water · gather · open"],
+  ["Jump", "long and floaty"],
+  ["Pouch", "tap a seed to hold it"],
+];
+
 function ControlsCard() {
+  const touch = window.matchMedia("(pointer: coarse)").matches;
+  const rows = touch ? TOUCH : KEYS;
   return (
     <div className="pointer-events-auto fixed top-1/2 right-3 z-20 w-[min(300px,86vw)] -translate-y-1/2 sm:right-5">
       <div className="glass flex flex-col gap-3 rounded-2xl p-4">
@@ -75,7 +85,7 @@ function ControlsCard() {
           Suit controls
         </div>
         <dl className="m-0 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 text-sm">
-          {KEYS.map(([k, what]) => (
+          {rows.map(([k, what]) => (
             <div key={k} className="contents">
               <dt>
                 <kbd className="rounded-md border border-ink/40 px-1.5 py-0.5 text-[11px] font-bold whitespace-nowrap">
