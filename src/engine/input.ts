@@ -1,5 +1,6 @@
 // Keyboard, mouse, touch and gamepad folded into one intent.
-// - Keyboard: WASD or arrows move, Shift lopes, Space jumps, E interacts.
+// - Keyboard: WASD or arrows move, Shift lopes, Space jumps, E interacts, 1–7 pick a seed and
+//   Q / R cycle the pouch.
 // - Mouse: drag or pointer-lock to look, wheel to zoom.
 // - Touch: the left half is a floating stick; drag the right half to look.
 // - Gamepad: left stick, right stick, A, X, and the right trigger to lope.
@@ -11,6 +12,10 @@ export interface Intent {
   run: boolean;
   jump: boolean;
   interact: boolean;
+  /** A seed picked directly this frame (0-based slot), or −1. */
+  seedSlot: number;
+  /** Pouch cycling this frame: −1, 0 or +1. */
+  seedStep: number;
   /** Look deltas in pixels since the last read. */
   lookX: number;
   lookY: number;
@@ -30,6 +35,9 @@ let stickOrigin = { x: 0, y: 0 };
 const stick = { x: 0, y: 0 };
 let lookId: number | null = null;
 const buttons = { jump: false, interact: false, run: false };
+let seedSlot = -1;
+let seedStep = 0;
+let padBumpers = [false, false];
 
 export function bindInput(target: HTMLElement, active: () => boolean) {
   window.addEventListener("keydown", (e) => {
@@ -37,6 +45,12 @@ export function bindInput(target: HTMLElement, active: () => boolean) {
     if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))
       return;
     keys.add(e.code);
+    if (!e.repeat) {
+      const digit = /^Digit([1-7])$/.exec(e.code);
+      if (digit) seedSlot = Number(digit[1]) - 1;
+      if (e.code === "KeyQ") seedStep = -1;
+      if (e.code === "KeyR") seedStep = 1;
+    }
     if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code))
       e.preventDefault();
   });
@@ -112,6 +126,14 @@ export function setButton(name: keyof typeof buttons, down: boolean) {
   buttons[name] = down;
 }
 
+/** The on-screen pouch picks a seed slot, or steps through it. */
+export function pickSeed(slot: number) {
+  seedSlot = slot;
+}
+export function stepSeed(dir: number) {
+  seedStep = dir;
+}
+
 export function readIntent(): Intent {
   const k = (c: string) => keys.has(c);
   let mx = (k("KeyD") || k("ArrowRight") ? 1 : 0) - (k("KeyA") || k("ArrowLeft") ? 1 : 0);
@@ -132,6 +154,12 @@ export function readIntent(): Intent {
     jump ||= !!pad.buttons[0]?.pressed;
     interact ||= !!pad.buttons[2]?.pressed;
     run ||= (pad.buttons[7]?.value ?? 0) > 0.4;
+    // Bumpers cycle the pouch, once per press.
+    const lb = !!pad.buttons[4]?.pressed;
+    const rb = !!pad.buttons[5]?.pressed;
+    if (lb && !padBumpers[0]) seedStep = -1;
+    if (rb && !padBumpers[1]) seedStep = 1;
+    padBumpers = [lb, rb];
   }
   const len = Math.hypot(mx, my);
   if (len > 1) {
@@ -140,7 +168,20 @@ export function readIntent(): Intent {
   }
   // A full touch stick lopes.
   if (Math.hypot(stick.x, stick.y) > 0.92) run = true;
-  const intent: Intent = { moveX: mx, moveY: my, run, jump, interact, lookX, lookY, zoom };
+  const intent: Intent = {
+    moveX: mx,
+    moveY: my,
+    run,
+    jump,
+    interact,
+    seedSlot,
+    seedStep,
+    lookX,
+    lookY,
+    zoom,
+  };
   lookX = lookY = zoom = 0;
+  seedSlot = -1;
+  seedStep = 0;
   return intent;
 }
