@@ -85,6 +85,9 @@ input[type="range"].sun-range {
 [role="application"]:focus-visible {
   outline-offset: -4px;
 }
+canvas:focus-visible {
+  outline-offset: -4px;
+}
 
 /* The title card waits for the arrival veil to lift, then fades up. */
 .title-in {
@@ -103,5 +106,293 @@ input[type="range"].sun-range {
 @media (prefers-reduced-motion: reduce) {
   .title-in {
     animation: none;
+  }
+}
+
+/* Keep every pouch slot within the viewport; native scrolling reveals late tools. */
+.seed-pouch {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.seed-pouch button {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 54px;
+}
+.seed-pouch button:disabled {
+  cursor: default;
+}
+.moon-toolbar {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.moon-scroll-hint {
+  display: none;
+}
+.water-count {
+  display: none;
+}
+.moon-prompt {
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.moon-prompt kbd {
+  flex-shrink: 0;
+}
+.mission-guide {
+  width: min(430px, 100%);
+  max-height: 144px;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+.moon-radio {
+  max-height: 180px;
+  overflow: hidden;
+}
+.moon-hud[data-controls="true"] .mission-guide,
+.moon-hud[data-controls="true"] .moon-radio {
+  visibility: hidden;
+}
+.touch-buttons {
+  right: max(16px, env(safe-area-inset-right));
+  bottom: 184px;
+}
+.controls-card {
+  top: 104px;
+  right: max(16px, env(safe-area-inset-right));
+  width: min(300px, calc(100vw - 32px));
+  max-height: calc(100dvh - 268px);
+  overflow-y: auto;
+  border-radius: 16px;
+  overscroll-behavior: contain;
+}
+.arrival-title {
+  overflow-y: auto;
+}
+.moon-ending {
+  position: fixed;
+  margin: auto;
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  color: var(--color-ink);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.moon-ending::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+.moon-hud[data-reduced="true"],
+.moon-hud[data-reduced="true"] * {
+  transition: none;
+}
+
+@media (max-width: 700px) {
+  .oxygen-heading {
+    gap: 2px 8px;
+    flex-wrap: wrap;
+    letter-spacing: 0.06em;
+  }
+  .moon-toolbar {
+    gap: 6px;
+  }
+  .moon-toolbar .btn {
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+  .moon-kit {
+    padding: 8px;
+  }
+  .moon-kit .water-label {
+    width: auto;
+    letter-spacing: 0.04em;
+  }
+  .water-pips {
+    display: none;
+  }
+  .water-count {
+    display: inline;
+  }
+  .moon-radio {
+    max-height: 120px;
+  }
+  .mission-guide {
+    font-size: 12px;
+  }
+  .guide-body {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .controls-card {
+    top: 112px;
+    max-height: min(300px, calc(100dvh - 288px));
+  }
+  .arrival-copy {
+    padding-bottom: max(28px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 400px) and (max-height: 650px) {
+  .moon-hud[data-guide="true"] .moon-radio {
+    display: none;
+  }
+  .arrival-title {
+    align-items: flex-end;
+  }
+  .arrival-copy {
+    gap: 12px;
+    padding: 24px;
+  }
+  .arrival-copy h1 {
+    font-size: 32px;
+  }
+  .arrival-copy > p {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .arrival-source {
+    display: none;
+  }
+  .ending-panel {
+    padding: 20px;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 720px) and (max-height: 550px) and (orientation: landscape) {
+  .moon-hud {
+    inset: 0 0 0 auto;
+    width: min(260px, 46vw);
+    gap: 6px;
+    padding-inline: 8px;
+    background: linear-gradient(90deg, transparent, rgb(4 5 10 / 0.5));
+  }
+  .hud-top {
+    gap: 6px;
+    min-height: 0;
+    flex-shrink: 0;
+  }
+  .hud-bottom {
+    display: grid;
+    grid-auto-rows: max-content;
+    align-content: start;
+    gap: 6px;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    pointer-events: auto;
+    scrollbar-width: thin;
+  }
+  .moon-scroll-hint {
+    display: block;
+    line-height: 12px;
+  }
+  .moon-banner-slot {
+    position: absolute;
+    top: 12px;
+    right: calc(100% + 12px);
+    width: calc(100vw - min(260px, 46vw) - 24px);
+  }
+  .moon-oxygen {
+    width: 100%;
+    padding: 4px 10px;
+    gap: 2px;
+  }
+  .oxygen-heading {
+    font-size: 9px;
+    line-height: 12px;
+  }
+  .moon-oxygen > div:last-child {
+    font-size: 11px;
+    line-height: 14px;
+  }
+  .landing-label {
+    display: none;
+  }
+  .mission-guide {
+    max-height: 120px;
+    flex-shrink: 0;
+    padding: 6px 10px;
+  }
+  .mission-guide > p:first-child {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+  .moon-radio {
+    display: none;
+  }
+  .moon-toolbar {
+    gap: 4px;
+  }
+  .moon-toolbar .btn {
+    padding-inline: 7px;
+    font-size: 11px;
+  }
+  .moon-kit {
+    padding-inline: 6px;
+  }
+  .moon-kit > div {
+    gap: 4px;
+  }
+  .moon-prompt {
+    gap: 4px 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .moon-prompt .prompt-detail {
+    width: 100%;
+    text-align: center;
+  }
+  .touch-buttons {
+    right: calc(min(260px, 46vw) + 12px);
+    bottom: 16px;
+    gap: 8px;
+  }
+  .touch-buttons button {
+    width: 44px;
+    height: 44px;
+  }
+  .controls-card {
+    top: 12px;
+    right: 8px;
+    width: calc(min(260px, 46vw) - 16px);
+    max-height: calc(100dvh - 24px);
+  }
+  .arrival-title {
+    align-items: center;
+  }
+  .arrival-copy {
+    max-width: 58vw;
+    gap: 10px;
+    padding: 20px 24px;
+  }
+  .arrival-copy h1 {
+    font-size: 32px;
+  }
+  .arrival-copy > p {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .arrival-copy > div:first-child {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+  }
+  .arrival-copy .btn {
+    font-size: 12px;
+    padding-inline: 12px;
+  }
+  .arrival-source,
+  .arrival-copy span.text-dim {
+    display: none;
+  }
+  .ending-panel {
+    padding: 20px 24px;
+    gap: 12px;
   }
 }

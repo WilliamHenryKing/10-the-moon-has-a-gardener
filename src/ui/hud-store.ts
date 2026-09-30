@@ -15,11 +15,17 @@ export interface RadioLine {
 }
 
 export interface HudState {
+  /** The world has drawn a successful frame; controls remain inert until then. */
+  ready: boolean;
+  /** Live motion preference, published by main. */
+  reduced: boolean;
   /** Dome oxygen, 0 … 1, and production per second (share of the dome per minute). */
   oxygen: number;
   perMinute: number;
   /** Seconds until the Perennial lands (negative once it has). */
   eta: number;
+  /** The ship actually landed, including an early arrival after the dome fills. */
+  shipLanded: boolean;
   seeds: Record<SpeciesId, number>;
   /** Species the gardener has ever held (the rest show as unknown). */
   known: SpeciesId[];
@@ -30,6 +36,8 @@ export interface HudState {
   sprinklers: number;
   prompt: { verb: string; detail: string; ok: boolean } | null;
   radio: RadioLine[];
+  /** The current action-led instruction stays until the rules advance it. */
+  guide: { text: string } | null;
   banner: { id: number; title: string; sub: string } | null;
   medal: Medal | null;
   /** Hide everything (intro, photo mode). */
@@ -43,10 +51,13 @@ export interface HudState {
   ending: { medal: Medal; minutes: number; plants: number; species: number } | null;
 }
 
-let state: HudState = {
+const initialState = (): HudState => ({
+  ready: false,
+  reduced: false,
   oxygen: 0,
   perMinute: 0,
   eta: 0,
+  shipLanded: false,
   seeds: {
     mooncress: 0,
     sunleaf: 0,
@@ -64,6 +75,7 @@ let state: HudState = {
   sprinklers: 0,
   prompt: null,
   radio: [],
+  guide: null,
   banner: null,
   medal: null,
   hidden: false,
@@ -71,7 +83,8 @@ let state: HudState = {
   controls: false,
   muted: false,
   ending: null,
-};
+});
+let state = initialState();
 const listeners = new Set<() => void>();
 
 export const hud = {
@@ -79,6 +92,11 @@ export const hud = {
   set(patch: Partial<HudState>) {
     state = { ...state, ...patch };
     for (const l of listeners) l();
+  },
+  reset() {
+    state = initialState();
+    radioId = bannerId = 1;
+    for (const listener of listeners) listener();
   },
   subscribe(fn: () => void) {
     listeners.add(fn);
@@ -98,6 +116,8 @@ export const introActions = {
   begin: () => {},
   skip: () => {},
   mute: () => {},
+  /** Reopen/dismiss the controls and leave focus in the active game. */
+  controls: (_open: boolean) => {},
   /** From the medal card: back to the garden, or start again. */
   resume: () => {},
   replay: () => {},

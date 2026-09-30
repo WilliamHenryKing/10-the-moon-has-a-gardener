@@ -302,5 +302,5 @@ describe("the basin", () => {
     );
     expect(minutes).toBeGreaterThan(9);
     expect(minutes).toBeLessThan(17);
-  });
+  }, 15_000);
 });

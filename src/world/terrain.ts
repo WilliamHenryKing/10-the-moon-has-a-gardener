@@ -1,3 +1,4 @@
+import { workerResult } from "../engine/resources";
 import type { Heightfield } from "./terrain-gen";
 
 // The generated basin at runtime: height and slope queries for walking, placing and the camera.
@@ -6,20 +7,17 @@ import type { Heightfield } from "./terrain-gen";
 export class Terrain {
   constructor(readonly field: Heightfield) {}
 
-  static async load(): Promise<Terrain> {
+  static async load(signal?: AbortSignal): Promise<Terrain> {
     try {
       const worker = new Worker(new URL("./terrain.worker.ts", import.meta.url), {
         type: "module",
       });
-      const field = await new Promise<Heightfield>((resolve, reject) => {
-        worker.onmessage = (e) => resolve(e.data);
-        worker.onerror = (e) => reject(e);
-        worker.postMessage(null);
-      });
-      worker.terminate();
+      const field = await workerResult<Heightfield>(worker, null, signal);
       return new Terrain(field);
-    } catch {
+    } catch (error) {
+      if (signal?.aborted) throw error;
       const { buildHeightfield } = await import("./terrain-gen");
+      signal?.throwIfAborted();
       return new Terrain(buildHeightfield());
     }
   }

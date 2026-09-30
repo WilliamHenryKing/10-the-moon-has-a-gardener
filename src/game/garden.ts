@@ -205,7 +205,7 @@ export function fit(species: SpeciesId, spot: Spot): { fit: number; reason: stri
   return { fit: f, reason };
 }
 
-export type PlantRefusal = "no seeds" | "too close" | "too steep" | "base" | "outside";
+export type PlantRefusal = "no seeds" | "too close" | "too steep" | "base" | "outside" | "occupied";
 
 export function canPlant(
   g: Garden,
@@ -254,7 +254,7 @@ export function plant(
 }
 
 export function water(g: Garden, p: Plant): boolean {
-  if (g.can <= 0 || p.water > 0.6) return false;
+  if (!g.plants.includes(p) || g.can <= 0 || p.water > 0.6) return false;
   g.can--;
   p.water = 1;
   g.events.push({ type: "watered", plant: p });
@@ -270,7 +270,7 @@ export function refill(g: Garden) {
 
 export function harvest(g: Garden, p: Plant): boolean {
   const s = SPECIES[p.species];
-  if (p.growth < 1 || p.harvestIn > 0 || s.seeds === 0) return false;
+  if (!g.plants.includes(p) || p.growth < 1 || p.harvestIn > 0 || s.seeds === 0) return false;
   g.seeds[p.species] += s.seeds;
   p.harvestIn = s.regrow;
   g.events.push({ type: "harvested", plant: p, seeds: s.seeds });
@@ -279,7 +279,7 @@ export function harvest(g: Garden, p: Plant): boolean {
 
 /** Dig up a young plant and get its seed back (a mistake is never permanent). */
 export function dig(g: Garden, p: Plant): boolean {
-  if (p.growth >= 0.35) return false;
+  if (!g.plants.includes(p) || p.growth >= 0.35) return false;
   g.plants = g.plants.filter((q) => q !== p);
   g.seeds[p.species]++;
   g.events.push({ type: "dug", plant: p });
@@ -324,48 +324,119 @@ export function takePickup(g: Garden, id: string): boolean {
   return true;
 }
 
+const breath = (growth: number) => (growth >= 1 ? 1 : growth >= 0.6 ? 0.3 : 0);
+
+interface Breathing {
+  matureAt: number;
+  bloomAt: number;
+  wetFor: number;
+  dryBreath: number;
+  oxygen: number;
+}
+
+/** Integrate the wet mature/bloom periods and the dry plant's surviving trickle. */
+function oxygenDuring(
+  dt: number,
+  matureAt: number,
+  bloomAt: number,
+  wetFor: number,
+  dryBreath: number,
+  oxygen: number,
+) {
+  const wet = Math.min(dt, wetFor);
+  const mature = Math.max(0, Math.min(wet, bloomAt) - matureAt);
+  const blooming = Math.max(0, wet - bloomAt);
+  return oxygen * (mature * 0.3 + blooming + (dt - wet) * dryBreath);
+}
+
 export function step(g: Garden, dt: number) {
+  if (!Number.isFinite(dt) || dt <= 0) return;
   const before = g.time;
+  const oxygenBefore = g.oxygen;
   g.time += dt;
-  let rate = 0;
+  const pending = MILESTONES.find((m) => !g.unlocked.has(m.unlock));
+  // Crossing times are needed only near an unlock, rather than allocating one curve per plant
+  // on every ordinary frame. The upper bound also covers plants that bloom during this step.
+  const curves: Breathing[] | null =
+    pending &&
+    oxygenBefore + g.plants.reduce((sum, p) => sum + SPECIES[p.species].oxygen, 0) * dt >=
+      pending.at * DOME
+      ? []
+      : null;
+  const events: { at: number; event: GardenEvent }[] = [];
+  let oxygen = 0;
   for (const p of g.plants) {
     const sprinkled = g.sprinklers.some((s) => Math.hypot(s.x - p.x, s.z - p.z) < SPRINKLER_RADIUS);
-    if (sprinkled) p.water = 1;
     const wasWet = p.water > 0;
-    p.water = Math.max(0, p.water - dt / WATER_TIME);
-    if (wasWet && p.water === 0) g.events.push({ type: "thirsty", plant: p });
-    if (p.growth < 1 && p.water > 0) {
-      p.growth = Math.min(1, p.growth + (dt * p.fit) / SPECIES[p.species].grow);
+    const wetFor = sprinkled ? dt : Math.min(dt, p.water * WATER_TIME);
+    const rate = p.fit / SPECIES[p.species].grow;
+    const matureAt = p.growth >= 0.6 ? 0 : rate > 0 ? (0.6 - p.growth) / rate : Infinity;
+    const bloomAt = p.growth >= 1 ? 0 : rate > 0 ? (1 - p.growth) / rate : Infinity;
+    p.water = sprinkled ? 1 : Math.max(0, p.water - dt / WATER_TIME);
+    if (p.water < 1e-12) p.water = 0;
+    if (wasWet && p.water === 0) events.push({ at: wetFor, event: { type: "thirsty", plant: p } });
+    if (p.growth < 1 && wetFor > 0) {
+      p.growth = Math.min(1, p.growth + wetFor * rate);
+      if (Math.abs(p.growth - 0.6) < 1e-12) p.growth = 0.6;
+      if (1 - p.growth < 1e-12) p.growth = 1;
       if (p.growth >= 1 && !p.bloomed) {
         p.bloomed = true;
-        const first = !g.journal.has(p.species);
-        g.journal.add(p.species);
-        g.events.push({ type: "bloomed", plant: p, first });
+        events.push({
+          at: Math.min(dt, bloomAt),
+          event: { type: "bloomed", plant: p, first: false },
+        });
       }
     }
     p.harvestIn = Math.max(0, p.harvestIn - dt);
-    const s = SPECIES[p.species];
-    // Blooms breathe fully; mature plants a little; thirsty ones not at all.
-    const breath = p.growth >= 1 ? 1 : p.growth >= 0.6 ? 0.3 : 0;
-    rate += s.oxygen * breath * (p.water > 0 ? 1 : 0.2);
+    if (p.harvestIn < 1e-9) p.harvestIn = 0;
+    const dryBreath = breath(p.growth) * 0.2;
+    const plantOxygen = SPECIES[p.species].oxygen;
+    oxygen += oxygenDuring(dt, matureAt, bloomAt, wetFor, dryBreath, plantOxygen);
+    curves?.push({ matureAt, bloomAt, wetFor, dryBreath, oxygen: plantOxygen });
   }
-  g.oxygen = Math.min(DOME, g.oxygen + rate * dt);
+  g.oxygen = Math.min(DOME, oxygenBefore + oxygen);
+  const crossedAt = (target: number) => {
+    if (oxygenBefore >= target) return 0;
+    let lo = 0;
+    let hi = dt;
+    for (let i = 0; i < 45; i++) {
+      const mid = (lo + hi) / 2;
+      const made =
+        curves?.reduce(
+          (sum, b) =>
+            sum + oxygenDuring(mid, b.matureAt, b.bloomAt, b.wetFor, b.dryBreath, b.oxygen),
+          0,
+        ) ?? 0;
+      if (oxygenBefore + made >= target) hi = mid;
+      else lo = mid;
+    }
+    return hi;
+  };
   const share = oxygenShare(g);
   for (const m of MILESTONES)
     if (share >= m.at && !g.unlocked.has(m.unlock)) {
+      const at = crossedAt(m.at * DOME);
       g.unlocked.add(m.unlock);
-      g.events.push({ type: "milestone", unlock: m.unlock, title: m.title });
-      if (m.unlock === "full") g.filledAt = g.time;
+      events.push({ at, event: { type: "milestone", unlock: m.unlock, title: m.title } });
+      if (m.unlock === "full") g.filledAt = before + at;
     }
-  if (before < ARRIVAL && g.time >= ARRIVAL) g.events.push({ type: "arrived" });
+  if (before < ARRIVAL && g.time >= ARRIVAL)
+    events.push({ at: ARRIVAL - before, event: { type: "arrived" } });
+  events.sort((a, b) => a.at - b.at);
+  for (const e of events) {
+    if (e.event.type === "bloomed") {
+      e.event.first = !g.journal.has(e.event.plant.species);
+      g.journal.add(e.event.plant.species);
+    }
+    g.events.push(e.event);
+  }
 }
 
 /** Oxygen per second right now. */
 export function production(g: Garden) {
   let rate = 0;
   for (const p of g.plants) {
-    const breath = p.growth >= 1 ? 1 : p.growth >= 0.6 ? 0.3 : 0;
-    rate += SPECIES[p.species].oxygen * breath * (p.water > 0 ? 1 : 0.2);
+    rate += SPECIES[p.species].oxygen * breath(p.growth) * (p.water > 0 ? 1 : 0.2);
   }
   return rate;
 }

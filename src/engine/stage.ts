@@ -8,6 +8,7 @@ import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { type Dir, earthDirection } from "../world/sky-model";
 import { type Quality, TIERS } from "./quality";
+import { disposeObject } from "./resources";
 
 // One lighting model for the Moon. There is no air: the Sun is a single hard key (sharp shadows,
 // no haze), and the only fill is light bounced off the sunlit regolith (a hemisphere from below)
@@ -114,6 +115,8 @@ export class Stage {
   quality: Quality;
   /** Sun direction (unit, toward the Sun). */
   readonly sunDir = new THREE.Vector3(0, 0.1, -1);
+  private environment: THREE.WebGLRenderTarget | null = null;
+  private disposed = false;
   private scale = 1;
   private pendingScale: number | null = null;
   width = 1;
@@ -128,88 +131,97 @@ export class Stage {
       powerPreference: "high-performance",
       stencil: false,
     });
-    this.renderer.toneMapping = THREE.AgXToneMapping;
-    this.renderer.toneMappingExposure = EXPOSURE;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    // Black space is the clear colour of the layered pass (a background would clear it twice).
-    this.scene.background = null;
-    this.farCamera.layers.set(FAR_LAYER);
+    try {
+      this.renderer.info.autoReset = false;
+      this.renderer.toneMapping = THREE.AgXToneMapping;
+      this.renderer.toneMappingExposure = EXPOSURE;
+      this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFShadowMap;
+      // Black space is the clear colour of the layered pass (a background would clear it twice).
+      this.scene.background = null;
+      this.farCamera.layers.set(FAR_LAYER);
 
-    // ?shadows=0 turns the Sun's shadow map off (diagnostics on devices that misbehave).
-    this.sun.castShadow = new URLSearchParams(location.search).get("shadows") !== "0";
-    this.sun.shadow.mapSize.set(tier.shadow, tier.shadow);
-    const sc = this.sun.shadow.camera;
-    sc.left = sc.bottom = -SHADOW_HALF;
-    sc.right = sc.top = SHADOW_HALF;
-    sc.near = 1;
-    sc.far = SHADOW_REACH + 60;
-    const texel = (2 * SHADOW_HALF) / tier.shadow;
-    this.sun.shadow.normalBias = texel * 1.2;
-    this.sun.shadow.bias = -0.0002;
-    this.sun.shadow.radius = 1.5;
-    this.sun.layers.enable(FAR_LAYER);
-    this.fill.layers.enable(FAR_LAYER);
-    this.scene.add(this.sun, this.sun.target, this.fill);
-    this.scene.environment = this.buildEnvironment();
-    this.scene.environmentIntensity = 0.7;
+      // ?shadows=0 turns the Sun's shadow map off (diagnostics on devices that misbehave).
+      this.sun.castShadow = new URLSearchParams(location.search).get("shadows") !== "0";
+      this.sun.shadow.mapSize.set(tier.shadow, tier.shadow);
+      const sc = this.sun.shadow.camera;
+      sc.left = sc.bottom = -SHADOW_HALF;
+      sc.right = sc.top = SHADOW_HALF;
+      sc.near = 1;
+      sc.far = SHADOW_REACH + 60;
+      const texel = (2 * SHADOW_HALF) / tier.shadow;
+      this.sun.shadow.normalBias = texel * 1.2;
+      this.sun.shadow.bias = -0.0002;
+      this.sun.shadow.radius = 1.5;
+      this.sun.layers.enable(FAR_LAYER);
+      this.fill.layers.enable(FAR_LAYER);
+      this.scene.add(this.sun, this.sun.target, this.fill);
+      this.scene.environment = this.buildEnvironment();
+      this.scene.environmentIntensity = 0.7;
 
-    const target = new THREE.WebGLRenderTarget(1, 1, {
-      type: THREE.HalfFloatType,
-      samples: tier.msaa,
-    });
-    this.composer = new EffectComposer(this.renderer, target);
-    this.composer.addPass(new LayeredRenderPass(this.scene, this.camera, this.farCamera));
-    this.composer.addPass(new ShaderPass(FiniteShader));
-    this.ao = new GTAOPass(this.scene, this.camera, 1, 1);
-    this.ao.blendIntensity = 0.85;
-    this.ao.updateGtaoMaterial({
-      radius: 0.6,
-      distanceExponent: 1.5,
-      thickness: 1,
-      scale: 1,
-      samples: 12,
-    });
-    this.ao.updatePdMaterial({
-      lumaPhi: 10,
-      depthPhi: 2,
-      normalPhi: 3,
-      radius: 5,
-      rings: 2,
-      samples: 10,
-    });
-    const patched = this.ao as unknown as {
-      _overrideVisibility(): void;
-      _visibilityCache: THREE.Object3D[];
-    };
-    const original = patched._overrideVisibility.bind(this.ao);
-    patched._overrideVisibility = () => {
-      original();
-      for (const o of this.aoHidden)
-        if (o.visible) {
-          o.visible = false;
-          patched._visibilityCache.push(o);
+      const target = new THREE.WebGLRenderTarget(1, 1, {
+        type: THREE.HalfFloatType,
+        samples: tier.msaa,
+      });
+      this.composer = new EffectComposer(this.renderer, target);
+      this.composer.addPass(new LayeredRenderPass(this.scene, this.camera, this.farCamera));
+      this.composer.addPass(new ShaderPass(FiniteShader));
+      this.ao = new GTAOPass(this.scene, this.camera, 1, 1);
+      this.ao.blendIntensity = 0.85;
+      this.ao.updateGtaoMaterial({
+        radius: 0.6,
+        distanceExponent: 1.5,
+        thickness: 1,
+        scale: 1,
+        samples: 12,
+      });
+      this.ao.updatePdMaterial({
+        lumaPhi: 10,
+        depthPhi: 2,
+        normalPhi: 3,
+        radius: 5,
+        rings: 2,
+        samples: 10,
+      });
+      const patched = this.ao as unknown as {
+        _overrideVisibility(): void;
+        _visibilityCache: THREE.Object3D[];
+      };
+      const original = patched._overrideVisibility.bind(this.ao);
+      patched._overrideVisibility = () => {
+        original();
+        for (const o of this.aoHidden)
+          if (o.visible) {
+            o.visible = false;
+            patched._visibilityCache.push(o);
+          }
+      };
+      const aoRender = this.ao.render.bind(this.ao);
+      this.ao.render = ((...args: Parameters<GTAOPass["render"]>) => {
+        const shadows = this.renderer.shadowMap;
+        const auto = shadows.autoUpdate;
+        shadows.autoUpdate = false;
+        try {
+          aoRender(...args);
+        } finally {
+          shadows.autoUpdate = auto;
         }
-    };
-    const aoRender = this.ao.render.bind(this.ao);
-    this.ao.render = ((...args: Parameters<GTAOPass["render"]>) => {
-      const shadows = this.renderer.shadowMap;
-      const auto = shadows.autoUpdate;
-      shadows.autoUpdate = false;
-      try {
-        aoRender(...args);
-      } finally {
-        shadows.autoUpdate = auto;
-      }
-    }) as GTAOPass["render"];
-    this.ao.enabled = tier.ao;
-    this.composer.addPass(this.ao);
-    // Glare from the Sun's disc, Earth's glint and anything that glows; nothing else.
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.35, 0.35, 1.6);
-    this.composer.addPass(this.bloom);
-    this.composer.addPass(new OutputPass());
-    if (tier.smaa) this.composer.addPass(new SMAAPass());
+      }) as GTAOPass["render"];
+      this.ao.enabled = tier.ao;
+      this.composer.addPass(this.ao);
+      // Glare from the Sun's disc, Earth's glint and anything that glows; nothing else.
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.35, 0.35, 1.6);
+      this.composer.addPass(this.bloom);
+      this.composer.addPass(new OutputPass());
+      if (tier.smaa) this.composer.addPass(new SMAAPass());
+    } catch (error) {
+      this.environment?.dispose();
+      disposeObject(this.scene);
+      this.renderer.dispose();
+      this.renderer.forceContextLoss();
+      throw error;
+    }
   }
 
   /** A small equirectangular sky of what the Moon reflects: black space, the Earth, sunlit ground. */
@@ -244,10 +256,13 @@ export class Stage {
     tex.mapping = THREE.EquirectangularReflectionMapping;
     tex.colorSpace = THREE.SRGBColorSpace;
     const pmrem = new THREE.PMREMGenerator(this.renderer);
-    const env = pmrem.fromEquirectangular(tex).texture;
-    pmrem.dispose();
-    tex.dispose();
-    return env;
+    try {
+      this.environment = pmrem.fromEquirectangular(tex);
+      return this.environment.texture;
+    } finally {
+      pmrem.dispose();
+      tex.dispose();
+    }
   }
 
   /** The Sun's full irradiance (colour × intensity), for materials that shadow it themselves. */
@@ -325,13 +340,29 @@ export class Stage {
     f.fov = c.fov;
     f.aspect = c.aspect;
     f.zoom = c.zoom;
+    f.view = c.view ? { ...c.view } : null;
     f.near = split * 0.75;
     f.far = 420000;
     f.updateProjectionMatrix();
     f.updateMatrixWorld();
   }
 
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    disposeObject(this.scene);
+    this.environment?.dispose();
+    this.scene.environment = null;
+    this.sun.shadow.dispose();
+    for (const pass of this.composer.passes) pass.dispose();
+    this.composer.dispose();
+    this.renderer.dispose();
+    this.renderer.forceContextLoss();
+    this.aoHidden.length = 0;
+  }
+
   render() {
+    if (this.disposed) return;
     if (this.pendingScale !== null) {
       this.scale = this.pendingScale;
       this.pendingScale = null;

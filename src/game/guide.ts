@@ -47,6 +47,9 @@ export class Guide {
           `It grows while it has water. Plant a few more: try ${SPECIES.sunleaf.name} (key 2) out in full sun.`,
         );
         break;
+      case "harvested":
+        this.said.add("harvested");
+        break;
       case "thirsty":
         this.once(
           "thirsty",
@@ -94,6 +97,41 @@ export class Guide {
     }
   }
 
+  /** The current task stays on the suit until the gardener actually completes it. */
+  instruction(g: Garden): string {
+    if (g.unlocked.has("full"))
+      return "The dome is full. Your garden keeps growing; enjoy the first air on the Moon.";
+    if (g.plants.length === 0)
+      return "Step off the pad and face open ground. Choose Mooncress (1); a green ring suits the seed. Press E or tap Act to plant.";
+    if (!this.said.has("watered"))
+      return "Face your new seed and press E or tap Act to water it. Plants grow only while they have water.";
+    if (g.can === 0 && g.plants.some((p) => p.water <= 0.6))
+      return "The can is empty. Refill at the tank beside the dome, or at the ice drill; stand nearby and press E or tap Act.";
+    if (g.journal.size === 0)
+      return "Keep your seeds watered until the first bloom. Try Sunleaf (2) on open ground; refill at the tank when needed.";
+    if (
+      !this.said.has("harvested") &&
+      g.plants.some((p) => p.bloomed && SPECIES[p.species].seeds > 0)
+    )
+      return "Face a bloom and press E or tap Act to harvest its seeds. The flower stays and keeps breathing into the dome.";
+    const probe = g.pickups.find((p) => p.id === "probe");
+    if (probe && !probe.taken)
+      return "Find the crashed survey probe south-east of the pad. Stand by its amber beacon and press E or tap Act to open it.";
+    if (g.seeds.nightbell > 0 && !g.journal.has("nightbell"))
+      return "Try Nightbell (3) in the shaded crater bowl, or behind a shade panel (8). Plant it, then water it.";
+    if (!g.unlocked.has("caches"))
+      return "Grow and tend more flowers. At 40% dome oxygen, two new survey caches open; the rover unlocks at 25%.";
+    if (g.pickups.some((p) => p.needs === "caches" && !p.taken))
+      return "Follow the amber beacons: Glassfern seeds on the Earthside slope to the north, Craterbloom seeds at the ice drill to the west.";
+    if (!g.unlocked.has("supply"))
+      return "Plant Glassfern on a slope facing Earth and Craterbloom by wet ice. Keep tending your garden to reach the 60% supply drop.";
+    if (g.pickups.some((p) => p.id === "supply" && !p.taken))
+      return "The supply drop waits beside the pad. Open it for birch saplings and sprinklers.";
+    if (g.seeds.birch > 0 && !g.plants.some((p) => p.species === "birch"))
+      return "Set a sprinkler (9) on open sunny ground, then plant Silver birch (6) within five metres. The sprinkler keeps it watered.";
+    return "Tend dry plants, harvest more seeds and grow the garden until the dome is full. Suit jets unlock at 80% oxygen.";
+  }
+
   private milestone(unlock: string) {
     const lines: Record<string, string> = {
       rover: "A quarter full! The rover's fuel cell is charged: it's by the pad when you want it.",
@@ -101,7 +139,7 @@ export class Guide {
         "Survey caches located: one on the Earthside slope to the north, one at the ice drill in the bowl to the west.",
       supply: "Supply drop coming down beside the pad: birch saplings and sprinklers.",
       jets: "Suit jets unlocked. Hold Space in the air to boost.",
-      full: "The dome is full. Perennial, you are clear to land.",
+      full: "The dome is full. Perennial, your air is ready.",
     };
     const text = lines[unlock];
     if (text) this.once(`milestone-${unlock}`, text, "Mission Control", 11);

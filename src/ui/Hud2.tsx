@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
-import { pickSeed, setButton } from "../engine/input";
+import { useEffect, useRef, useState } from "react";
+import { pickSeed } from "../engine/input";
 import { SPECIES, SPECIES_ORDER, type SpeciesId } from "../game/species";
-import { type RadioLine, useHud } from "./hud-store";
+import { clock } from "./clock";
+import { HoldButton } from "./HoldButton";
+import { introActions, type RadioLine, useHud } from "./hud-store";
+import { SoundButton } from "./SoundButton";
 
 // The suit's displays: dome oxygen and the mission clock across the top of the visor, Mission
 // Control on the radio at the left, the seed pouch and kit along the bottom, and what E will do
@@ -17,24 +20,21 @@ export const SPECIES_COLOUR: Record<SpeciesId, string> = {
   orchid: "#ffd46a",
 };
 
-const clock = (s: number) => {
-  const t = Math.max(0, Math.round(s));
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
-};
-
 function Oxygen() {
   const oxygen = useHud((s) => s.oxygen);
   const perMinute = useHud((s) => s.perMinute);
   const eta = useHud((s) => s.eta);
+  const shipLanded = useHud((s) => s.shipLanded);
   const pct = Math.round(oxygen * 100);
   return (
-    <div className="glass pointer-events-none mx-auto flex w-[min(520px,92vw)] flex-col gap-1.5 rounded-2xl px-4 py-2.5">
-      <div className="flex items-baseline justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-dim">
+    <div className="moon-oxygen glass pointer-events-none mx-auto flex w-[min(520px,92vw)] flex-col gap-1.5 rounded-2xl px-4 py-2.5">
+      <div className="oxygen-heading flex items-baseline justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-dim">
         <span>Dome oxygen</span>
         <span className="tabular-nums text-ink">
-          {eta > 0 ? (
+          {eta > 0 && !shipLanded ? (
             <>
-              Perennial lands in <b className="text-sun">{clock(eta)}</b>
+              <span className="landing-label">Perennial lands in </span>
+              <b className="text-sun">{clock(eta)}</b>
             </>
           ) : (
             <b className="text-sun">The Perennial has landed</b>
@@ -65,31 +65,50 @@ function Oxygen() {
 }
 
 function Line({ line }: { line: RadioLine }) {
+  const reduced = useHud((s) => s.reduced);
+  const started = useRef(performance.now());
   const [shown, setShown] = useState(0);
   const [fading, setFading] = useState(false);
+  const [expired, setExpired] = useState(false);
   useEffect(() => {
-    // Type the line out, then let it fade.
-    let n = 0;
+    // The accessible line is complete; visual typing respects live reduced motion.
+    const elapsed = () => performance.now() - started.current;
+    const reveal = () =>
+      setShown(
+        reduced ? line.text.length : Math.min(line.text.length, Math.ceil(elapsed() / 22) * 2),
+      );
+    reveal();
     const tick = setInterval(() => {
-      n = Math.min(line.text.length, n + 2);
-      setShown(n);
-      if (n >= line.text.length) clearInterval(tick);
+      reveal();
+      if (reduced || elapsed() >= line.text.length * 11) clearInterval(tick);
     }, 22);
-    const fade = setTimeout(() => setFading(true), line.hold * 1000);
+    const fade = setTimeout(() => setFading(true), Math.max(0, line.hold * 1000 - elapsed()));
+    const remove = setTimeout(
+      () => setExpired(true),
+      Math.max(0, (line.hold + 1) * 1000 - elapsed()),
+    );
     return () => {
       clearInterval(tick);
       clearTimeout(fade);
+      clearTimeout(remove);
     };
-  }, [line]);
+  }, [line, reduced]);
+  if (expired) return null;
   return (
     <div
       className="glass max-w-[min(430px,80vw)] rounded-xl px-3 py-2 text-sm leading-snug transition-opacity duration-1000"
       style={{ opacity: fading ? 0 : 1 }}
     >
-      <span className="mr-2 text-[10px] font-bold uppercase tracking-[0.16em] text-sun">
+      <span className="sr-only">
+        {line.who}: {line.text}
+      </span>
+      <span
+        aria-hidden="true"
+        className="mr-2 text-[10px] font-bold uppercase tracking-[0.16em] text-sun"
+      >
         {line.who}
       </span>
-      {line.text.slice(0, shown)}
+      <span aria-hidden="true">{line.text.slice(0, shown)}</span>
     </div>
   );
 }
@@ -97,11 +116,39 @@ function Line({ line }: { line: RadioLine }) {
 function Radio() {
   const radio = useHud((s) => s.radio);
   return (
-    <div className="pointer-events-none flex flex-col items-start gap-1.5" aria-live="polite">
+    <div
+      className="moon-radio pointer-events-none flex flex-col items-start gap-1.5"
+      aria-live="polite"
+    >
       {radio.map((l) => (
         <Line key={l.id} line={l} />
       ))}
     </div>
+  );
+}
+
+function MissionGuide() {
+  const guide = useHud((s) => s.guide);
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (guide?.text && ref.current) ref.current.scrollTop = 0;
+  }, [guide?.text]);
+  if (!guide) return null;
+  return (
+    <aside
+      ref={ref}
+      className="mission-guide glass rounded-xl px-3 py-2"
+      aria-label="Mission Control guide"
+      aria-live="polite"
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: Bounded instructions support native keyboard scrolling.
+      tabIndex={0}
+      data-keyboard-scroll
+    >
+      <p className="m-0 mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-sun">
+        Mission Control · Next action
+      </p>
+      <p className="guide-body m-0 text-sm leading-snug">{guide.text}</p>
+    </aside>
   );
 }
 
@@ -159,8 +206,12 @@ function Pouch() {
   const selected = useHud((s) => s.selected);
   const panels = useHud((s) => s.panels);
   const sprinklers = useHud((s) => s.sprinklers);
+  const controls = useHud((s) => s.controls);
   return (
-    <fieldset className="glass pointer-events-auto m-0 flex gap-1 rounded-2xl border-0 p-1.5">
+    <fieldset
+      className="seed-pouch glass pointer-events-auto m-0 flex gap-1 rounded-2xl border-0 p-1.5"
+      disabled={controls}
+    >
       <legend className="sr-only">Seed pouch</legend>
       {SPECIES_ORDER.map((id, i) => {
         const has = known.includes(id);
@@ -169,6 +220,7 @@ function Pouch() {
           <button
             key={id}
             type="button"
+            disabled={!has || seeds[id] <= 0}
             aria-pressed={on}
             aria-label={
               has
@@ -199,6 +251,7 @@ function Pouch() {
           <button
             key={tool}
             type="button"
+            disabled={n <= 0}
             aria-pressed={on}
             aria-label={`${name}: ${n} (key ${key})`}
             onClick={() => pickSeed(key - 1)}
@@ -223,12 +276,16 @@ function Kit() {
   const can = useHud((s) => s.can);
   const canMax = useHud((s) => s.canMax);
   return (
-    <div className="glass pointer-events-none flex flex-col gap-1.5 rounded-2xl px-3 py-2 text-xs">
+    <div className="moon-kit glass pointer-events-none flex flex-col gap-1.5 rounded-2xl px-3 py-2 text-xs">
       <div className="flex items-center gap-2">
-        <span className="w-12 text-[10px] font-semibold uppercase tracking-[0.12em] text-dim">
+        <span className="water-label w-12 text-[10px] font-semibold uppercase tracking-[0.12em] text-dim">
           Water
         </span>
-        <div className="flex gap-1" role="img" aria-label={`Watering can: ${can} of ${canMax}`}>
+        <div
+          className="water-pips flex gap-1"
+          role="img"
+          aria-label={`Watering can: ${can} of ${canMax}`}
+        >
           {PIPS.slice(0, canMax).map((pip, i) => (
             <span
               key={pip}
@@ -240,6 +297,13 @@ function Kit() {
             />
           ))}
         </div>
+        <span
+          className="water-count tabular-nums"
+          role="img"
+          aria-label={`Watering can: ${can} of ${canMax}`}
+        >
+          {can}/{canMax}
+        </span>
       </div>
     </div>
   );
@@ -249,7 +313,7 @@ function Prompt() {
   const prompt = useHud((s) => s.prompt);
   if (!prompt) return null;
   return (
-    <div className="pointer-events-none flex items-center gap-2.5 rounded-xl bg-black/45 px-3 py-1.5 text-sm backdrop-blur-sm">
+    <div className="moon-prompt pointer-events-none flex items-center gap-2.5 rounded-xl bg-black/45 px-3 py-1.5 text-sm backdrop-blur-sm">
       <kbd
         className={`grid h-6 w-6 place-items-center rounded-md border text-xs font-bold ${prompt.ok ? "border-ink/70 text-ink" : "border-scorch/60 text-scorch"}`}
       >
@@ -258,7 +322,7 @@ function Prompt() {
       <span className={prompt.ok ? "font-semibold" : "font-semibold text-scorch"}>
         {prompt.verb}
       </span>
-      <span className="text-dim">{prompt.detail}</span>
+      <span className="prompt-detail text-dim">{prompt.detail}</span>
     </div>
   );
 }
@@ -288,65 +352,77 @@ function Banner() {
 /** On touch screens: the two buttons a thumb needs (the left half of the screen is the stick). */
 function TouchButtons() {
   const prompt = useHud((s) => s.prompt);
-  const press = (name: "interact" | "jump") => ({
-    onPointerDown: (e: React.PointerEvent) => {
-      e.preventDefault();
-      setButton(name, true);
-    },
-    onPointerUp: () => setButton(name, false),
-    onPointerCancel: () => setButton(name, false),
-    onPointerLeave: () => setButton(name, false),
-  });
   return (
-    <div className="pointer-events-auto fixed right-4 bottom-44 z-20 flex flex-col items-center gap-3 [@media(pointer:fine)]:hidden">
-      <button
-        type="button"
-        aria-label={prompt ? prompt.verb : "Act"}
+    <div className="touch-buttons pointer-events-auto fixed z-20 flex flex-col items-center gap-3 [@media(pointer:fine)]:hidden">
+      <HoldButton
+        name="interact"
+        label={prompt ? `Act: ${prompt.verb}` : "Act"}
         className="grid h-16 w-16 touch-none select-none place-items-center rounded-full border border-sun/60 bg-black/45 text-sm font-bold text-sun backdrop-blur-sm active:bg-sun/25"
-        {...press("interact")}
       >
         Act
-      </button>
-      <button
-        type="button"
-        aria-label="Jump"
+      </HoldButton>
+      <HoldButton
+        name="jump"
+        label="Jump"
         className="grid h-12 w-12 touch-none select-none place-items-center rounded-full border border-ink/40 bg-black/45 text-xs font-semibold backdrop-blur-sm active:bg-white/15"
-        {...press("jump")}
       >
         Jump
-      </button>
+      </HoldButton>
     </div>
   );
 }
 
 export function Hud2() {
   const hidden = useHud((s) => s.hidden);
+  const ready = useHud((s) => s.ready);
+  const reduced = useHud((s) => s.reduced);
+  const controls = useHud((s) => s.controls);
+  const ending = useHud((s) => s.ending);
+  const hasGuide = useHud((s) => s.guide !== null);
+  const invisible = hidden || !ready || ending !== null;
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-10 flex flex-col justify-between p-3 transition-opacity duration-500 sm:p-4"
+      className="moon-hud pointer-events-none fixed inset-0 z-10 flex flex-col justify-between p-3 transition-opacity duration-500 sm:p-4"
+      inert={invisible}
+      aria-hidden={invisible || undefined}
+      data-controls={controls}
+      data-reduced={reduced}
+      data-guide={hasGuide}
+      data-visible={!invisible}
       style={{
-        opacity: hidden ? 0 : 1,
+        opacity: invisible ? 0 : 1,
+        visibility: invisible ? "hidden" : "visible",
         paddingTop: "max(12px, env(safe-area-inset-top))",
         paddingBottom: "max(12px, env(safe-area-inset-bottom))",
       }}
     >
-      <div className="flex flex-col gap-3">
+      <div className="hud-top flex flex-col gap-3">
         <Oxygen />
+        <MissionGuide />
         <Radio />
       </div>
-      <div className="flex flex-col items-center gap-3">
+      <div className="moon-banner-slot flex flex-col items-center gap-3">
         <Banner />
       </div>
-      <div className="flex flex-col items-center gap-2.5">
+      <div className="hud-bottom flex flex-col items-center gap-2.5">
+        <p className="moon-scroll-hint m-0 text-center text-[10px] text-dim">
+          Scroll for more tools <span aria-hidden="true">↓</span>
+        </p>
         <Prompt />
-        <div className="flex w-full items-end justify-center gap-3">
-          <Pouch />
-          <div className="hidden sm:block">
-            <Kit />
-          </div>
+        <Pouch />
+        <div className="moon-toolbar pointer-events-auto flex w-full items-center justify-center gap-2">
+          <Kit />
+          <SoundButton />
+          <button
+            type="button"
+            className="moon-help btn btn-ghost"
+            onClick={() => introActions.controls(!controls)}
+          >
+            Suit controls
+          </button>
         </div>
       </div>
-      {!hidden && <TouchButtons />}
+      {!invisible && !controls && <TouchButtons />}
     </div>
   );
 }

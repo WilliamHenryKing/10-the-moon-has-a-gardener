@@ -7,6 +7,7 @@ dist-smoke/
 !.env.example
 output/
 .playwright-cli/
+.workspace/
 *.log
 *.tsbuildinfo
 .DS_Store
@@ -18,3 +19,6 @@ assets-src/lola/
 tools/bake/.venv/
 tools/bake/.cache/
 bake/work/
+
+test-results/
+playwright-report/

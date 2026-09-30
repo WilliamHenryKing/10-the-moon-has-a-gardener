@@ -1,18 +1,18 @@
 import * as THREE from "three";
 import type { RegolithMaps } from "./ground";
+import { Assets } from "./resources";
 
 // PBR texture sets shipped in public/textures/<set>/ as WebP (see assets.manifest.json): colour in
 // sRGB, everything else linear. ARM packs ambient occlusion, roughness and metalness.
 
-const loader = new THREE.TextureLoader();
 let anisotropy = 8;
 
 export function setAnisotropy(a: number) {
   anisotropy = a;
 }
 
-export async function loadTexture(url: string, colour: boolean) {
-  const t = await loader.loadAsync(`${import.meta.env.BASE_URL}${url}`);
+export async function loadTexture(url: string, colour: boolean, assets = new Assets()) {
+  const t = await assets.texture(`${import.meta.env.BASE_URL}${url}`);
   t.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = anisotropy;
@@ -41,9 +41,9 @@ export function meanLuminance(t: THREE.Texture) {
   return Math.max(0.02, sum / (d.length / 4));
 }
 
-export async function loadRegolith(): Promise<RegolithMaps> {
+export async function loadRegolith(assets = new Assets()): Promise<RegolithMaps> {
   const set = (name: string, map: string, colour = false) =>
-    loadTexture(`textures/${name}/${name}_${map}.webp`, colour);
+    loadTexture(`textures/${name}/${name}_${map}.webp`, colour, assets);
   const [colour, normal, arm, roughNormal, roughArm, meteorNormal] = await Promise.all([
     set("moon_dusted_05", "diff", true),
     set("moon_dusted_05", "nor"),

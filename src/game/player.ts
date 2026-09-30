@@ -73,6 +73,15 @@ export class Player {
     this.vx = this.vy = this.vz = 0;
     this.yaw = yaw;
     this.grounded = true;
+    this.turn = this.landing = 0;
+    this.fuel = JET_FUEL;
+    this.releaseInput();
+  }
+
+  /** A suspended input owner must not leave the next jump waiting for a stale release. */
+  releaseInput() {
+    this.jumpHeld = false;
+    this.thrusting = false;
   }
 
   get speed() {
@@ -80,7 +89,7 @@ export class Player {
   }
 
   update(input: MoveInput, dt: number, ground: GroundQuery, obstacles: readonly Obstacle[] = []) {
-    if (dt <= 0) return;
+    if (!Number.isFinite(dt) || dt <= 0) return;
     const mag = Math.min(1, Math.hypot(input.x, input.z));
     const target = (input.run ? LOPE_SPEED : WALK_SPEED) * mag;
     const dx = mag > 1e-3 ? input.x / Math.hypot(input.x, input.z) : 0;
@@ -137,14 +146,16 @@ export class Player {
     }
 
     // Move, keep within the basin, push out of obstacles.
+    const previousX = this.x;
+    const previousZ = this.z;
     this.x += this.vx * dt;
     this.z += this.vz * dt;
     const r = Math.hypot(this.x, this.z);
     if (r > BOUNDARY) {
       this.x *= BOUNDARY / r;
       this.z *= BOUNDARY / r;
-      const nx = this.x / r;
-      const nz = this.z / r;
+      const nx = this.x / BOUNDARY;
+      const nz = this.z / BOUNDARY;
       const out = this.vx * nx + this.vz * nz;
       if (out > 0) {
         this.vx -= out * nx;
@@ -152,11 +163,28 @@ export class Player {
       }
     }
     for (const o of obstacles) {
-      const ox = this.x - o.x;
-      const oz = this.z - o.z;
-      const d = Math.hypot(ox, oz);
+      let ox = this.x - o.x;
+      let oz = this.z - o.z;
+      let d = Math.hypot(ox, oz);
       const min = o.r + 0.32;
-      if (d < min && d > 1e-4) {
+      if (d < min) {
+        // A moving/spawned obstacle can land exactly on the gardener. Use the previous side
+        // (or the direction opposite travel) instead of leaving the body at its centre.
+        if (d < 1e-4) {
+          ox = previousX - o.x;
+          oz = previousZ - o.z;
+          d = Math.hypot(ox, oz);
+          if (d < 1e-4) {
+            ox = -this.vx;
+            oz = -this.vz;
+            d = Math.hypot(ox, oz);
+          }
+          if (d < 1e-4) {
+            ox = Math.sin(this.yaw);
+            oz = Math.cos(this.yaw);
+            d = 1;
+          }
+        }
         this.x = o.x + (ox / d) * min;
         this.z = o.z + (oz / d) * min;
         const into = this.vx * (ox / d) + this.vz * (oz / d);

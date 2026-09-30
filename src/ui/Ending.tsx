@@ -1,4 +1,7 @@
-import { introActions, useHud } from "./hud-store";
+import { useEffect, useRef } from "react";
+import { clock } from "./clock";
+import { type HudState, introActions, useHud } from "./hud-store";
+import { SoundButton } from "./SoundButton";
 
 // The last card: the medal, what the garden did, and the way back to it (or round again).
 
@@ -38,13 +41,34 @@ function Medallion({ colour }: { colour: string }) {
 
 export function Ending() {
   const ending = useHud((s) => s.ending);
-  if (!ending) return null;
+  return ending ? <EndingCard ending={ending} /> : null;
+}
+
+function EndingCard({ ending }: { ending: NonNullable<HudState["ending"]> }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    const node = dialog.current;
+    if (!node) return;
+    node.showModal();
+    node.scrollTop = 0;
+    heading.current?.focus({ preventScroll: true });
+    return () => {
+      if (node.open) node.close();
+    };
+  }, []);
   const m = MEDALS[ending.medal];
-  const mins = Math.floor(ending.minutes);
-  const secs = Math.round((ending.minutes - mins) * 60);
   return (
-    <div className="title-in pointer-events-auto fixed inset-0 z-30 grid place-items-center bg-black/35 px-4">
-      <div className="glass flex w-[min(460px,100%)] flex-col items-center gap-4 rounded-3xl px-7 py-8 text-center">
+    <dialog
+      ref={dialog}
+      className="moon-ending"
+      aria-labelledby="ending-title"
+      onCancel={(event) => {
+        event.preventDefault();
+        introActions.resume();
+      }}
+    >
+      <div className="ending-panel glass flex w-full flex-col items-center gap-4 rounded-3xl px-7 py-8 text-center">
         <Medallion colour={m.colour} />
         <div
           className="text-[11px] font-bold uppercase tracking-[0.3em]"
@@ -52,11 +76,19 @@ export function Ending() {
         >
           {m.title}
         </div>
-        <h2 className="m-0 text-3xl font-semibold text-balance">The first breath on the Moon</h2>
+        <h2
+          id="ending-title"
+          ref={heading}
+          tabIndex={-1}
+          data-keyboard-scroll
+          className="m-0 text-3xl font-semibold text-balance"
+        >
+          The first breath on the Moon
+        </h2>
         <p className="m-0 text-sm leading-relaxed text-ink/85">{m.line}</p>
         <dl className="m-0 grid w-full grid-cols-3 gap-2 text-center">
           {[
-            [`${mins}:${String(secs).padStart(2, "0")}`, "to fill the dome"],
+            [clock(ending.minutes * 60), "to fill the dome"],
             [String(ending.plants), "plants in the ground"],
             [`${ending.species} of 7`, "species in bloom"],
           ].map(([v, k]) => (
@@ -67,6 +99,7 @@ export function Ending() {
           ))}
         </dl>
         <div className="flex flex-wrap justify-center gap-3">
+          <SoundButton />
           <button type="button" className="btn btn-primary" onClick={() => introActions.resume()}>
             Keep gardening
           </button>
@@ -75,6 +108,6 @@ export function Ending() {
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

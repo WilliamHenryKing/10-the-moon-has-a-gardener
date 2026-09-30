@@ -60,17 +60,18 @@ export class Intro {
   }
 
   /** Hand over to the follow camera, which is at `eye` looking at `target`. */
-  finish(followEye: THREE.Vector3, followTarget: THREE.Vector3, dt: number) {
+  finish(followEye: THREE.Vector3, followTarget: THREE.Vector3, dt: number, calm = false) {
     if (this.phase !== "arrive") return;
-    this.t += dt;
+    this.t = calm ? ARRIVE : this.t + dt;
     const k = ease(clamp01(this.t / ARRIVE));
     this.eye.lerpVectors(this.from.eye, followEye, k);
     this.target.lerpVectors(this.from.target, followTarget, k);
     if (this.t >= ARRIVE) this.phase = "done";
   }
 
-  update(dt: number) {
-    this.time += dt;
+  update(dt: number, calm = false) {
+    if (!calm) this.time += dt;
+    if (calm && this.phase === "descent") this.skip();
     if (this.phase === "title") {
       this.titleShot(this.time);
       this.lander.update(dt, 0);

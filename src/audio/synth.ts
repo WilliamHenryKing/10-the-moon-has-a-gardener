@@ -8,7 +8,6 @@ const TONES: Record<Cue, { f: number; to?: number; d: number; type: OscillatorTy
   place: { f: 180, to: 120, d: 0.18, type: "triangle", g: 0.5 },
   lift: { f: 520, to: 780, d: 0.12, type: "sine", g: 0.35 },
   denied: { f: 140, d: 0.14, type: "square", g: 0.12 },
-  tick: { f: 1200, d: 0.03, type: "sine", g: 0.15 },
   cursor: { f: 900, d: 0.02, type: "sine", g: 0.08 },
   step: { f: 90, to: 60, d: 0.08, type: "triangle", g: 0.25 },
   ui: { f: 660, d: 0.1, type: "sine", g: 0.25 },
@@ -17,11 +16,16 @@ const TONES: Record<Cue, { f: number; to?: number; d: number; type: OscillatorTy
   bloom: { f: 990, to: 1480, d: 0.6, type: "sine", g: 0.25 },
   wilt: { f: 300, to: 150, d: 0.5, type: "sawtooth", g: 0.08 },
   success: { f: 523, to: 1046, d: 1.1, type: "triangle", g: 0.3 },
-  failure: { f: 330, to: 220, d: 0.6, type: "triangle", g: 0.25 },
   ending: { f: 392, to: 784, d: 1.6, type: "triangle", g: 0.3 },
 };
 
-export function synthCue(ctx: AudioContext, out: AudioNode, cue: Cue, rate = 1): void {
+export function synthCue(
+  ctx: AudioContext,
+  out: AudioNode,
+  cue: Cue,
+  rate = 1,
+  onEnd?: () => void,
+): () => void {
   const t = TONES[cue];
   const now = ctx.currentTime;
   const osc = ctx.createOscillator();
@@ -35,6 +39,19 @@ export function synthCue(ctx: AudioContext, out: AudioNode, cue: Cue, rate = 1):
   osc.connect(gain).connect(out);
   osc.start(now);
   osc.stop(now + t.d + 0.05);
+  const stop = () => {
+    try {
+      osc.stop();
+    } catch {
+      /* already ended */
+    }
+    osc.disconnect();
+    gain.disconnect();
+    out.disconnect();
+    onEnd?.();
+  };
+  osc.onended = stop;
+  return stop;
 }
 
 /** A slow generative drone: two detuned voices through a breathing low-pass filter. */
@@ -60,7 +77,16 @@ export function synthBed(ctx: AudioContext, out: AudioNode): () => void {
   });
   lfo.start();
   return () => {
-    for (const o of [...voices, lfo]) o.stop();
+    for (const o of [...voices, lfo]) {
+      try {
+        o.stop();
+      } catch {
+        /* already stopped */
+      }
+      o.disconnect();
+    }
+    filter.disconnect();
+    lfoGain.disconnect();
     level.disconnect();
   };
 }

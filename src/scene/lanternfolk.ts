@@ -130,7 +130,8 @@ export class Lanternfolk {
   private dusk = false;
   private gifted = false;
   /** Called once, the first dusk they gather over three or more blooms: where they left it. */
-  onGift: ((x: number, z: number) => void) | null = null;
+  /** True means the world found a reachable place for the gift; otherwise try again. */
+  onGift: ((x: number, z: number) => boolean) | null = null;
 
   constructor(
     private ground: Ground,
@@ -248,11 +249,10 @@ export class Lanternfolk {
         const b = best >= 0 ? free.splice(best, 1)[0] : undefined;
         f.target = b ? new THREE.Vector3(b.x, this.ground(b.x, b.z) + HOVER, b.z) : null;
       }
-      if (!this.gifted && blooms.length >= 3) {
-        this.gifted = true;
-        const c = blooms.reduce((s, b) => ({ x: s.x + b.x, z: s.z + b.z }), { x: 0, z: 0 });
-        this.onGift?.(c.x / blooms.length + 1.5, c.z / blooms.length + 1.5);
-      }
+    }
+    if (this.dusk && !this.gifted && blooms.length >= 3) {
+      const c = blooms.reduce((s, b) => ({ x: s.x + b.x, z: s.z + b.z }), { x: 0, z: 0 });
+      if (this.onGift?.(c.x / blooms.length + 1.5, c.z / blooms.length + 1.5)) this.gifted = true;
     }
     if (!this.dusk && wasDusk) for (const f of this.folk) f.target = null;
     for (const f of this.folk) {

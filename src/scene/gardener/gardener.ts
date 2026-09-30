@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { workerResult } from "../../engine/resources";
 import { ChestScreen, fabricMaterial, partMaterials, suitUniforms } from "./materials";
 import { ANKLE, BONES, type BoneName, bindOf, SHIN, THIGH } from "./rig";
 import type { RigidPart, SuitMesh } from "./suit-body";
@@ -89,21 +90,18 @@ const VOXEL: Record<GardenerTier, { suit: number; parts: number }> = {
   low: { suit: 0.017, parts: 1.7 },
 };
 
-async function buildMeshes(tier: GardenerTier) {
+async function buildMeshes(tier: GardenerTier, signal?: AbortSignal) {
   const v = VOXEL[tier];
   try {
     const worker = new Worker(new URL("./suit-body.worker.ts", import.meta.url), {
       type: "module",
     });
-    const out = await new Promise<{ suit: SuitMesh; parts: RigidPart[] }>((resolve, reject) => {
-      worker.onmessage = (e) => resolve(e.data);
-      worker.onerror = (e) => reject(e);
-      worker.postMessage(v);
-    });
-    worker.terminate();
+    const out = await workerResult<{ suit: SuitMesh; parts: RigidPart[] }>(worker, v, signal);
     return out;
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error;
     const { buildParts, buildSuit } = await import("./suit-body");
+    signal?.throwIfAborted();
     return { suit: buildSuit(v.suit), parts: buildParts(v.parts) };
   }
 }
@@ -144,7 +142,7 @@ export class Gardener {
   private inverse = new THREE.Matrix4();
   private world = new THREE.Vector3();
 
-  constructor(tier: GardenerTier) {
+  constructor(tier: GardenerTier, signal?: AbortSignal) {
     const order: THREE.Bone[] = [];
     for (const def of BONES) {
       const b = new THREE.Bone();
@@ -161,15 +159,16 @@ export class Gardener {
     }
     this.root.updateMatrixWorld(true);
     this.skeleton = new THREE.Skeleton(order);
-    this.ready = this.build(tier);
+    this.ready = this.build(tier, signal);
   }
 
   private b(name: BoneName) {
     return this.bone.get(name) as THREE.Bone;
   }
 
-  private async build(tier: GardenerTier) {
-    const { suit, parts } = await buildMeshes(tier);
+  private async build(tier: GardenerTier, signal?: AbortSignal) {
+    const { suit, parts } = await buildMeshes(tier, signal);
+    signal?.throwIfAborted();
     const g = geometry(suit.positions, suit.normals, suit.indices);
     g.setAttribute("skinIndex", new THREE.BufferAttribute(suit.joints, 4));
     g.setAttribute("skinWeight", new THREE.BufferAttribute(suit.weights, 4, true));

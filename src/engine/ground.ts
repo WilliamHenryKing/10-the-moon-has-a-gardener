@@ -192,10 +192,11 @@ export class Ground {
   readonly group = new THREE.Group();
   private chunks: Chunk[] = [];
   private cache = new Map<string, THREE.BufferGeometry>();
+  private disposed = false;
 
   constructor(
     private terrain: Terrain,
-    material: THREE.Material,
+    private material: THREE.Material,
     private lodScale: number,
   ) {
     const n = Math.ceil((terrain.half + 8) / CHUNK);
@@ -258,6 +259,7 @@ export class Ground {
 
   /** Choose each chunk's level of detail for the camera. */
   update(camera: THREE.Vector3) {
+    if (this.disposed) return;
     for (const c of this.chunks) {
       const d = Math.hypot((c.cx + 0.5) * CHUNK - camera.x, (c.cz + 0.5) * CHUNK - camera.z);
       let lod = 3;
@@ -271,5 +273,17 @@ export class Ground {
         c.mesh.geometry = this.geometry(c.cx, c.cz, lod);
       }
     }
+  }
+
+  /** Release every visited LOD, including geometries no longer attached to a chunk. */
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.group.removeFromParent();
+    this.group.clear();
+    for (const geometry of this.cache.values()) geometry.dispose();
+    this.cache.clear();
+    this.chunks.length = 0;
+    this.material.dispose();
   }
 }

@@ -26,7 +26,7 @@
           "sha256": "9f86b2f6a4faa98795bb3048da2f3c12fbd79f455abc6a340c4b6b95c3e1ed67"
         }
       ],
-      "processing": "2k JPG → 1024² WebP (colour q86, normal and ARM q90); graded in the shader",
+      "processing": "2k JPG \u00e2\u2020\u2019 1024\u00c2\u00b2 WebP (colour q86, normal and ARM q90); graded in the shader",
       "outputFiles": [
         {
           "path": "public/textures/moon_dusted_05/moon_dusted_05_diff.webp",
@@ -69,13 +69,8 @@
           "sha256": "bb26c585fbabaf2c52c32bbe7bd50301e7e917e264c7e2fef55a651c67146a85"
         }
       ],
-      "processing": "2k JPG → 1024² WebP (colour q86, normal and ARM q90); graded in the shader",
+      "processing": "2k JPG \u00e2\u2020\u2019 1024\u00c2\u00b2 WebP (colour q86, normal and ARM q90); graded in the shader",
       "outputFiles": [
-        {
-          "path": "public/textures/moon_01/moon_01_diff.webp",
-          "bytes": 8568,
-          "sha256": "2c060e82ebb348ba0fccbbcea943c03f5cd913e8e798a95504c28efac85c0356"
-        },
         {
           "path": "public/textures/moon_01/moon_01_nor.webp",
           "bytes": 542456,
@@ -86,7 +81,15 @@
           "bytes": 196288,
           "sha256": "6587da5eb8ff63c9d596dfc43470f7db6887c01ef9d83b0d01b839d6cb8c5152"
         }
-      ]
+      ],
+      "retiredOutputFiles": [
+        {
+          "path": "public/textures/moon_01/moon_01_diff.webp",
+          "bytes": 8568,
+          "sha256": "2c060e82ebb348ba0fccbbcea943c03f5cd913e8e798a95504c28efac85c0356"
+        }
+      ],
+      "retirementNote": "Unused v1 output removed in the 30 September 2026 deep bug pass; source provenance retained."
     },
     {
       "id": "polyhaven-moon_meteor_01",
@@ -112,24 +115,27 @@
           "sha256": "1c6077a70bcecd00b8f3cc1a0289ad94749cfa054fab7f36689761431a7b8881"
         }
       ],
-      "processing": "2k JPG → 1024² WebP (colour q86, normal and ARM q90); graded in the shader",
+      "processing": "2k JPG \u00e2\u2020\u2019 1024\u00c2\u00b2 WebP (colour q86, normal and ARM q90); graded in the shader",
       "outputFiles": [
+        {
+          "path": "public/textures/moon_meteor_01/moon_meteor_01_nor.webp",
+          "bytes": 470750,
+          "sha256": "5e2f800725cc2a0495f0768d2bb213ba457c3ebab5ca3de2a2a0797dbc234a8b"
+        }
+      ],
+      "retiredOutputFiles": [
         {
           "path": "public/textures/moon_meteor_01/moon_meteor_01_diff.webp",
           "bytes": 7686,
           "sha256": "5f3e149e6b06902f0ccc43dab631daa8448b96832f0011a58d087a3475b7a060"
         },
         {
-          "path": "public/textures/moon_meteor_01/moon_meteor_01_nor.webp",
-          "bytes": 470750,
-          "sha256": "5e2f800725cc2a0495f0768d2bb213ba457c3ebab5ca3de2a2a0797dbc234a8b"
-        },
-        {
           "path": "public/textures/moon_meteor_01/moon_meteor_01_arm.webp",
           "bytes": 84356,
           "sha256": "00a8a53137329f38329894152c360fb51426b829abe483190a0857e96cbe642f"
         }
-      ]
+      ],
+      "retirementNote": "Unused v1 output removed in the 30 September 2026 deep bug pass; source provenance retained."
     },
     {
       "id": "nasa-lola-south-pole",

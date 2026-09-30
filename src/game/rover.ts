@@ -44,7 +44,7 @@ export class RoverBody {
   }
 
   update(input: DriveInput, dt: number, ground: GroundQuery, obstacles: readonly Obstacle[] = []) {
-    if (dt <= 0) return;
+    if (!Number.isFinite(dt) || dt <= 0) return;
     // Steering eases to the stick; it straightens a little at speed.
     const want =
       -input.steer * STEER_MAX * (1 - 0.4 * Math.min(1, Math.abs(this.speed) / ROVER_TOP));
@@ -69,6 +69,8 @@ export class RoverBody {
     if (Math.acos(Math.min(1, this.n.y)) > TOO_STEEP && climb > 0)
       this.speed *= 1 - Math.min(1, dt * 3);
     this.yaw += ((this.speed * Math.tan(this.steer)) / WHEELBASE) * dt;
+    const previousX = this.x;
+    const previousZ = this.z;
     this.x += f.x * this.speed * dt;
     this.z += f.z * this.speed * dt;
     const r = Math.hypot(this.x, this.z);
@@ -78,11 +80,21 @@ export class RoverBody {
       this.speed *= 0.5;
     }
     for (const o of obstacles) {
-      const ox = this.x - o.x;
-      const oz = this.z - o.z;
-      const d = Math.hypot(ox, oz);
+      let ox = this.x - o.x;
+      let oz = this.z - o.z;
+      let d = Math.hypot(ox, oz);
       const min = o.r + 1.5;
-      if (d < min && d > 1e-4) {
+      if (d < min) {
+        if (d < 1e-4) {
+          ox = previousX - o.x;
+          oz = previousZ - o.z;
+          d = Math.hypot(ox, oz);
+          if (d < 1e-4) {
+            ox = -f.x;
+            oz = -f.z;
+            d = 1;
+          }
+        }
         this.x = o.x + (ox / d) * min;
         this.z = o.z + (oz / d) * min;
         this.speed *= 0.3;

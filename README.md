@@ -27,7 +27,7 @@ The Sun never climbs here: it circles the horizon once every eight minutes, abou
 | Silver birch | sun and water | a sapling from the supply drop, by a sprinkler |
 | Selene orchid | a gift | from the lanternfolk |
 
-Every quarter of the dome unlocks something: the farm rover, the survey caches (follow the amber beacons), a supply drop of sprinklers and saplings, then suit jets. Fill it before the *Perennial* lands for gold; after, for silver or bronze.
+Oxygen milestones at 25%, 40%, 60% and 80% unlock the farm rover, the survey caches (follow the amber beacons), a supply drop of sprinklers and saplings, then suit jets. Fill it before the *Perennial* lands for gold; after, for silver or bronze.
 
 | Input | Keyboard and mouse | Touch |
 | --- | --- | --- |
@@ -36,15 +36,16 @@ Every quarter of the dome unlocks something: the farm rover, the survey caches (
 | Plant, water, gather, open, drive | `E` | **Act** |
 | Jump (hold with the jets) | `Space` | **Jump** |
 | Choose a seed or tool | `1` – `9`, `Q` / `R` | tap the pouch |
-| Mute (remembered) | `M` | title card |
+| Mute (remembered) | `M` or Sound | Sound |
+| Review controls | **Suit controls** | **Suit controls** |
 
 ## What's inside
 
 - **The real south pole.** The land around the basin is NASA's Lunar Orbiter Laser Altimeter topography of the ridge between Shackleton and de Gerlache craters, out to 146 km, with the Moon's curvature. Every point's skyline is baked in sixteen directions on the GPU, so mountains throw true shadows for wherever the Sun stands, and once a day it sinks behind the hills to the west and the basin goes blue with Earthshine.
 - **A cinematic arrival and ending.** A title shot high over the pole with Earth on the horizon, the lander's descent chased low over the craters, and at the end the *Perennial* landing, its colonists filing into the dome, and the helmet coming off.
-- **A world alive without you.** Giant lanternfolk drift in procession along the crater rim and come down at dusk to hover over your blooms; far off on a ridge something stacks glowing cairns, one stone each time you look away.
+- **A world alive without you.** Giant lanternfolk drift in procession along the crater rim and come down at dusk to hover over your blooms; rock-shelled grazers crop crystal lichen on the floor, planting their feet and finding paths around your plots; far off on a ridge something stacks glowing cairns, one stone each time you look away.
 - **Growth you caused:** seven species with their own models and growth stages, shade panels that throw real shadows, sprinklers, a greenhouse dome whose air visibly rises, a drivable six-wheeled rover and suit jets.
-- **Mission Control teaches by doing:** radio lines that wait for you to have done the last thing, a controls card, and a prompt that says what `E` will do before you press it.
+- **Mission Control teaches by doing:** a persistent action guide that waits for real planting, watering, blooming and harvesting, replayable suit controls, and a prompt that says what `E` will do before you press it.
 - **Lunar photometry:** a scanned regolith with Lommel-Seeliger shading and the opposition surge, a sun mask for the basin's long shadows, and Earth rendered live from NASA's Blue Marble with its phase following the Sun.
 - **Built to run on a laptop:** three quality tiers and a frame governor that trades resolution for smoothness.
 
@@ -68,6 +69,8 @@ Three.js for everything in the world, React for the suit's displays, TypeScript 
 bun install --frozen-lockfile
 bun run dev      # http://127.0.0.1:4520/
 bun run check    # tsc, Biome, bun test, production build into dist/
+bun run preview  # http://127.0.0.1:4620/
+bun run test:e2e # against preview, real Chrome / D3D11; one worker
 ```
 
 `src/engine/` holds the renderer, ground, far land, sky and camera; `src/game/` the rules; `src/scene/` the gardener, plants, base, rover, ships and life; `src/ui/` the HUD. `tools/bake/lola.py` rebuilds the lunar terrain from the NASA sources (see `docs/ASSET-SOURCING.md`), and `scripts/readme-media.mjs` records this page's media.
@@ -79,15 +82,15 @@ bun run check    # tsc, Biome, bun test, production build into dist/
 - **Regolith:** Poly Haven's `moon_dusted_05`, `moon_01` and `moon_meteor_01` scans, CC0.
 - Use of NASA material does not imply NASA endorsement. Everything else (the suit, plants, base, rover, ships, life, sky) is authored in code. Type uses the system font stack.
 
-Audio, all **CC0** (18 files, about 1.6 MB in `public/audio/`):
+Audio, all **CC0** (16 files, about 1.5 MB in `public/audio/`):
 
 | File(s) | Use | Source | Author | Licence |
 | --- | --- | --- | --- | --- |
 | `music-observing-the-star.ogg` | music loop | https://opengameart.org/content/another-space-background-track | yd | CC0 |
 | `ambience-deep-space-array.ogg` | ambience loop | https://opengameart.org/content/deep-space-array | Tozan | CC0 |
 | `panel-place-1/2`, `step-1/2` | panel set down, footsteps | Impact Sounds, https://kenney.nl/assets/impact-sounds | Kenney (kenney.nl) | CC0 |
-| `panel-lift`, `denied`, `sun-tick`, `cursor`, `ui`, `grow`, `hour`, `bloom`, `wilt` | interaction and day cues | Interface Sounds, https://kenney.nl/assets/interface-sounds | Kenney (kenney.nl) | CC0 |
-| `garden-blooms`, `ending`, `garden-fails` | result and ending jingles | Music Jingles, https://kenney.nl/assets/music-jingles | Kenney (kenney.nl) | CC0 |
+| `panel-lift`, `denied`, `cursor`, `ui`, `grow`, `hour`, `bloom`, `wilt` | interaction and day cues | Interface Sounds, https://kenney.nl/assets/interface-sounds | Kenney (kenney.nl) | CC0 |
+| `garden-blooms`, `ending` | result and ending jingles | Music Jingles, https://kenney.nl/assets/music-jingles | Kenney (kenney.nl) | CC0 |
 
 ---
 

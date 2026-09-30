@@ -68,8 +68,10 @@ export class Finale {
     if (this.phase === "medal") this.phase = "waiting";
   }
 
-  update(dt: number, domeFull: boolean) {
+  update(dt: number, domeFull: boolean, calm = false) {
     this.t += dt;
+    // Reduced motion uses fixed shots and settled arrivals instead of moving cameras.
+    if (calm && this.phase === "landing") this.t = Math.max(this.t, LANDING + 2.01);
     const t = this.t;
     switch (this.phase) {
       case "landing": {
@@ -94,9 +96,9 @@ export class Finale {
       case "walk": {
         this.ship.pose(this.pad, 0, 0, dt);
         if (t < dt * 1.5) this.ship.disembark();
-        this.ship.update(dt);
+        this.ship.update(calm ? 60 : dt);
         // Alongside the file, drifting with it toward the dome.
-        const k = ease(clamp01(t / 14));
+        const k = calm ? 0.5 : ease(clamp01(t / 14));
         const a = new THREE.Vector3().lerpVectors(this.pad, this.door, 0.25 + 0.55 * k);
         const side = new THREE.Vector3(this.door.z - this.pad.z, 0, -(this.door.x - this.pad.x))
           .normalize()
@@ -120,7 +122,7 @@ export class Finale {
         const head = new THREE.Vector3(s.x, this.dome.y + 1.62, s.z);
         this.eye
           .copy(head)
-          .addScaledVector(back, 1.35 - 0.25 * ease(clamp01(t / BREATH)))
+          .addScaledVector(back, 1.35 - (calm ? 0 : 0.25 * ease(clamp01(t / BREATH))))
           .addScaledVector(right, -0.55)
           .add(new THREE.Vector3(0, 0.12, 0));
         this.target

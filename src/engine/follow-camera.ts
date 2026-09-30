@@ -7,9 +7,12 @@ import type { Terrain } from "../world/terrain";
 // blocks the line to the gardener, it pulls in.
 
 export class FollowCamera {
+  calm = false;
   yaw = 0;
   pitch = 0.16;
   distance = 3.9;
+  /** Compact displays frame the gardener in the open area between suit panels. */
+  frameScale = 1;
   /** Over the right shoulder, so the ground just ahead of the gardener stays in view. */
   side = 0.6;
   private curDistance = 3.9;
@@ -24,6 +27,7 @@ export class FollowCamera {
 
   /** Pointer drag, in pixels. */
   drag(dx: number, dy: number) {
+    if (!dx && !dy) return;
     this.yaw -= dx * 0.0055;
     this.pitch = THREE.MathUtils.clamp(this.pitch + dy * 0.0045, -0.25, 1.15);
     this.idle = 0;
@@ -35,7 +39,7 @@ export class FollowCamera {
 
   /** A jolt (landings, rover bumps). */
   bump(strength: number) {
-    this.shake = Math.min(1, this.shake + strength);
+    if (!this.calm) this.shake = Math.min(1, this.shake + strength);
   }
 
   update(dt: number, target: THREE.Vector3, facing: number, moving: boolean) {
@@ -48,7 +52,8 @@ export class FollowCamera {
       this.yaw += d * Math.min(1, dt * 1.2);
     }
     // The shoulder offset narrows as the camera pulls back (a wide view needs none).
-    const side = this.side * THREE.MathUtils.clamp(1.4 - this.distance / 10, 0.2, 1);
+    const distance = this.distance * this.frameScale;
+    const side = this.side * THREE.MathUtils.clamp(1.4 - distance / 10, 0.2, 1);
     const goal = new THREE.Vector3(
       target.x + Math.cos(this.yaw) * side,
       target.y + 1.5,
@@ -62,7 +67,7 @@ export class FollowCamera {
       Math.cos(this.yaw) * Math.cos(this.pitch),
     );
     // Pull in when the ground is in the way.
-    let want = this.distance;
+    let want = distance;
     const hit = this.terrain.raycast(
       this.pivot.x,
       this.pivot.y,
@@ -79,6 +84,7 @@ export class FollowCamera {
     const floor = this.terrain.heightAt(pos.x, pos.z) + 0.35;
     if (pos.y < floor) pos.y = floor;
     this.shake = Math.max(0, this.shake - dt * 3);
+    if (this.calm) this.shake = 0;
     if (this.shake > 0) {
       const s = this.shake * this.shake * 0.06;
       pos.x += (Math.random() - 0.5) * s;

@@ -40,7 +40,7 @@ const MILESTONE_SUB: Record<string, string> = {
   caches: "Two survey caches are open: follow the amber beacons",
   supply: "Birch saplings and sprinklers, coming down by the pad",
   jets: "Hold Space in the air to boost",
-  full: "Perennial, you are clear to land",
+  full: "The colony's new home is ready",
 };
 
 export class Play {
@@ -63,6 +63,8 @@ export class Play {
   rover = { near: false, driving: false };
   /** Getting in (true) or out (false) of the rover. */
   onDrive: ((enter: boolean) => void) | null = null;
+  /** The world supplies its current solid footprints; garden rules need no scene objects. */
+  placementBlocked: ((a: Extract<Action, { kind: "plant" | "place" }>) => boolean) | null = null;
 
   constructor(
     private ground: HeightQuery,
@@ -74,6 +76,12 @@ export class Play {
     if (this.started) return;
     this.started = true;
     this.guide.start();
+    this.publish();
+  }
+
+  /** Release the previous interaction when a modal, film or suspended page owns input. */
+  releaseInput() {
+    this.wasInteract = false;
   }
 
   update(
@@ -82,7 +90,7 @@ export class Play {
     player: { x: number; z: number; yaw: number; grounded: boolean },
   ) {
     const g = this.garden;
-    if (!this.started) return;
+    if (!this.started || !Number.isFinite(dt) || dt <= 0) return;
     this.choose(intent);
     const busy = this.kneelFor > 0 || (!player.grounded && !this.rover.driving);
     const pressed = intent.interact && !this.wasInteract;
@@ -97,7 +105,9 @@ export class Play {
         ? { kind: "leave" }
         : this.rover.near && g.unlocked.has("rover")
           ? { kind: "drive" }
-          : nextAction(g, this.ground, player.x, player.z, player.yaw, this.selected);
+          : this.blockPlacement(
+              nextAction(g, this.ground, player.x, player.z, player.yaw, this.selected),
+            );
     }
     this.wasInteract = intent.interact;
     if (pressed && !busy && this.action) this.act(this.action);
@@ -144,6 +154,12 @@ export class Play {
       this.sfx("ui");
       return;
     }
+    const current = this.blockPlacement(a);
+    if (current !== a) {
+      this.action = current;
+      this.sfx("denied", { gain: 0.7 });
+      return;
+    }
     if (!perform(this.garden, this.ground, a)) {
       this.sfx("denied", { gain: 0.7 });
       return;
@@ -164,6 +180,13 @@ export class Play {
       default:
         break;
     }
+  }
+
+  private blockPlacement(a: Action): Action {
+    if ((a.kind !== "plant" && a.kind !== "place") || !this.placementBlocked?.(a)) return a;
+    return a.kind === "plant"
+      ? { kind: "cannot", species: a.species, x: a.x, z: a.z, refusal: "occupied" }
+      : { kind: "cannot-place", tool: a.tool, x: a.x, z: a.z, refusal: "occupied" };
   }
 
   private react(e: GardenEvent) {
@@ -203,7 +226,9 @@ export class Play {
     const g = this.garden;
     const share = oxygenShare(g);
     const a = this.action;
-    const known = SPECIES_ORDER.filter((id) => g.seeds[id] > 0 || g.journal.has(id));
+    const known = SPECIES_ORDER.filter(
+      (id) => g.seeds[id] > 0 || g.journal.has(id) || g.plants.some((p) => p.species === id),
+    );
     hud.set({
       oxygen: share,
       perMinute: ((production(g) * 60) / DOME) * 100,
@@ -217,6 +242,7 @@ export class Play {
       sprinklers: g.sprinklersCarried,
       prompt: a && this.kneelFor <= 0 ? describe(a) : null,
       medal: medal(g),
+      guide: { text: this.guide.instruction(g) },
     });
   }
 }

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { type Dir, earthDirection } from "../world/sky-model";
+import { Assets } from "./resources";
 import { FAR_LAYER } from "./stage";
 
 // The Moon's sky: black, stars that never twinkle (there is no air), a band of the Milky Way,
@@ -122,7 +123,7 @@ const EARTH_VERTEX = /* glsl */ `
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }`;
 
-// After tools/earth/earth.ts (the plate renderer for v1), unchanged in substance.
+// The original Earth plate shader, now rendered live from the NASA maps.
 const EARTH_FRAGMENT = /* glsl */ `
   uniform sampler2D dayMap;
   uniform sampler2D nightMap;
@@ -207,7 +208,10 @@ export class Sky {
   private spin = 0;
   readonly ready: Promise<void>;
 
-  constructor(detail: number) {
+  constructor(
+    detail: number,
+    private assets = new Assets(),
+  ) {
     const s = stars(Math.round(9000 * detail + 2000));
     this.starMat = s.mat;
     this.sun = sunDisc();
@@ -225,9 +229,8 @@ export class Sky {
   }
 
   private async loadEarth() {
-    const loader = new THREE.TextureLoader();
     const load = async (name: string, colour: boolean) => {
-      const t = await loader.loadAsync(`${import.meta.env.BASE_URL}earth2/${name}.webp`);
+      const t = await this.assets.texture(`${import.meta.env.BASE_URL}earth2/${name}.webp`);
       if (colour) t.colorSpace = THREE.SRGBColorSpace;
       t.anisotropy = 4;
       return t;
@@ -237,6 +240,7 @@ export class Sky {
       load("night", false),
       load("clouds", false),
     ]);
+    this.assets.signal.throwIfAborted();
     const globe = new THREE.Mesh(
       new THREE.SphereGeometry(1, 96, 64),
       new THREE.ShaderMaterial({

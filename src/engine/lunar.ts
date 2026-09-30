@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { Assets } from "./resources";
 
 // The real south pole around the basin, from NASA's Lunar Orbiter Laser Altimeter (public domain;
 // baked by tools/bake/lola.py): three nested height grids, 12 m to ±6 km, 80 m to ±40 km and 400 m
@@ -84,8 +85,8 @@ export interface Lunar {
 const BASE = `${import.meta.env.BASE_URL}lunar/`;
 
 /** Fetch a gzip file and inflate it (unless the server already did). */
-async function inflate(url: string): Promise<ArrayBuffer> {
-  const res = await fetch(url);
+async function inflate(url: string, signal: AbortSignal): Promise<ArrayBuffer> {
+  const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`${url}: ${res.status}`);
   const buf = await res.arrayBuffer();
   const head = new Uint8Array(buf, 0, 2);
@@ -94,9 +95,9 @@ async function inflate(url: string): Promise<ArrayBuffer> {
   return new Response(stream).arrayBuffer();
 }
 
-async function heights(level: Level, g: GridInfo): Promise<HeightGrid> {
+async function heights(level: Level, g: GridInfo, assets: Assets): Promise<HeightGrid> {
   const { n, offset, scale } = g.height;
-  const deltas = new Uint16Array(await inflate(`${BASE}${level}-h.bin.gz`));
+  const deltas = new Uint16Array(await inflate(`${BASE}${level}-h.bin.gz`, assets.signal));
   const data = new Float32Array(n * n);
   for (let j = 0; j < n; j++) {
     let q = 0;
@@ -108,9 +109,9 @@ async function heights(level: Level, g: GridInfo): Promise<HeightGrid> {
   return new HeightGrid(g.half, g.step, n, data);
 }
 
-async function horizon(h: HorizonInfo): Promise<THREE.DataArrayTexture> {
+async function horizon(h: HorizonInfo, assets: Assets): Promise<THREE.DataArrayTexture> {
   const n = h.n;
-  const raw = new Uint8Array(await inflate(`${BASE}${h.file}`));
+  const raw = new Uint8Array(await inflate(`${BASE}${h.file}`, assets.signal));
   // Rows are delta-coded along x, per channel.
   const data = new Uint8Array(raw.length);
   for (let p = 0; p < h.layers; p++)
@@ -133,7 +134,7 @@ async function horizon(h: HorizonInfo): Promise<THREE.DataArrayTexture> {
   tex.generateMipmaps = true;
   tex.anisotropy = 4;
   tex.needsUpdate = true;
-  return tex;
+  return assets.own(tex);
 }
 
 function normalMap(g: HeightGrid): THREE.DataTexture {
@@ -161,24 +162,28 @@ function normalMap(g: HeightGrid): THREE.DataTexture {
   return tex;
 }
 
-export async function loadLunar(): Promise<Lunar> {
-  const res = await fetch(`${BASE}lunar.json`);
+export async function loadLunar(assets = new Assets()): Promise<Lunar> {
+  const res = await fetch(`${BASE}lunar.json`, { signal: assets.signal });
   if (!res.ok) throw new Error(`lunar.json: ${res.status}`);
   const info = (await res.json()) as LunarInfo;
   const [near, mid, far, hn, hm, hf] = await Promise.all([
-    heights("near", info.grids.near),
-    heights("mid", info.grids.mid),
-    heights("far", info.grids.far),
-    horizon(info.horizon.near),
-    horizon(info.horizon.mid),
-    horizon(info.horizon.far),
+    heights("near", info.grids.near, assets),
+    heights("mid", info.grids.mid, assets),
+    heights("far", info.grids.far, assets),
+    horizon(info.horizon.near, assets),
+    horizon(info.horizon.mid, assets),
+    horizon(info.horizon.far, assets),
   ]);
   const grids = { near, mid, far };
   return {
     info,
     grids,
     horizon: { near: hn, mid: hm, far: hf },
-    normals: { near: normalMap(near), mid: normalMap(mid), far: normalMap(far) },
+    normals: {
+      near: assets.own(normalMap(near)),
+      mid: assets.own(normalMap(mid)),
+      far: assets.own(normalMap(far)),
+    },
     heightAt(x, z) {
       const wm = mid.weight(x, z);
       let h = wm < 1 ? far.sample(x, z) : 0;

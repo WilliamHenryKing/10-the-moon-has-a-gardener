@@ -41,7 +41,7 @@ export const TOOLS: readonly Tool[] = ["panel", "sprinkler"];
 /** Anything the pouch can hold ready: a species or a tool. */
 export type Held = SpeciesId | Tool;
 export const isTool = (h: Held): h is Tool => h === "panel" || h === "sprinkler";
-export type PlaceRefusal = "base" | "outside" | "too steep";
+export type PlaceRefusal = "base" | "outside" | "too steep" | "occupied";
 const REACH_PICKUP = 2.6;
 const REACH_PLANT = 1.8;
 
@@ -217,6 +217,7 @@ export function describe(a: Action): { verb: string; detail: string; ok: boolean
           };
     case "cannot-place": {
       const why: Record<PlaceRefusal, string> = {
+        occupied: "another object occupies this ground",
         base: "too close to the base",
         outside: "outside the basin",
         "too steep": "the ground is too steep",
@@ -225,6 +226,7 @@ export function describe(a: Action): { verb: string; detail: string; ok: boolean
     }
     case "cannot": {
       const why: Record<PlantRefusal, string> = {
+        occupied: "another object occupies this ground",
         "no seeds": `no ${SPECIES[a.species].name} seeds left`,
         "too close": "too close to another plant",
         "too steep": "the ground is too steep",

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { Terrain } from "../world/terrain";
+import { disposeObject } from "./resources";
 
 // Where the Sun reaches, over the whole basin. The Sun stands only ten degrees up, so hills, crater
 // rims and the basin wall throw shadows hundreds of metres long; a player-centred shadow map cannot
@@ -62,6 +63,7 @@ export class SunMask {
   private farTex: THREE.DataTexture;
   private since = 99;
   private first = true;
+  private disposed = false;
 
   constructor(
     private renderer: THREE.WebGLRenderer,
@@ -116,6 +118,13 @@ export class SunMask {
   /** The ground height texture, shared with anything else that needs the field on the GPU. */
   get heights() {
     return this.heightTex;
+  }
+
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const target of this.targets) target.dispose();
+    disposeObject(this.scene);
   }
 
   /** Re-render the newer target now and then, and cross-fade toward it in between. */

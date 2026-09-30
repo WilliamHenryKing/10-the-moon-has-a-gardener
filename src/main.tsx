@@ -4,7 +4,13 @@ import * as THREE from "three";
 import { AudioEngine } from "./audio/engine";
 import { Dust } from "./engine/dust";
 import { FollowCamera } from "./engine/follow-camera";
-import { bindInput, readIntent } from "./engine/input";
+import {
+  bindInput,
+  isEditingTarget,
+  nativeKeyTarget,
+  readIntent,
+  suppressRepeatedActivation,
+} from "./engine/input";
 import { detectQuality, FrameGovernor } from "./engine/quality";
 import { World } from "./engine/world";
 import { DOME as DOME_UNITS, medal, oxygenShare } from "./game/garden";
@@ -12,13 +18,16 @@ import type { HeightQuery } from "./game/light";
 import { Play } from "./game/play";
 import { Player } from "./game/player";
 import { RoverBody } from "./game/rover";
-import { worldReady } from "./loader";
+import { SPECIES } from "./game/species";
+import { worldFailed, worldReady } from "./loader";
 import { Base, DOME, LANDING } from "./scene/base";
 import { Caches, glow } from "./scene/caches";
 import { Cairns } from "./scene/cairns";
 import { FarmRover } from "./scene/farm-rover";
 import { Finale } from "./scene/finale";
 import { Gardener, type Motion, stillMotion } from "./scene/gardener/gardener";
+import { giftSpot } from "./scene/gift-placement";
+import { Grazers } from "./scene/grazers";
 import { Intro } from "./scene/intro";
 import { KitView } from "./scene/kit";
 import { Lander } from "./scene/lander";
@@ -35,9 +44,51 @@ import { sunAzimuth } from "./world/sky-model";
 // THE MOON HAS A GARDENER (v2): wiring. One world, one gardener, one camera, one clock, one
 // garden.
 
-const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+let calm = motionQuery.matches;
 const root = document.getElementById("root") as HTMLElement;
+root.inert = true;
+const runtime = new AbortController();
+let disposed = false;
+let ready = false;
+let frameId = 0;
+const cleanups: (() => void)[] = [];
+function dispose() {
+  if (disposed) return;
+  disposed = true;
+  ready = false;
+  cancelAnimationFrame(frameId);
+  runtime.abort();
+  for (const cleanup of cleanups.reverse()) {
+    try {
+      cleanup();
+    } catch {
+      /* continue releasing the remaining owners */
+    }
+  }
+  for (const key of Object.keys(introActions) as (keyof typeof introActions)[])
+    introActions[key] = () => {};
+  delete (window as unknown as Record<string, unknown>).__GAME__;
+  for (const waiter of waiters.splice(0)) waiter.done();
+  hud.reset();
+  root.replaceChildren();
+}
+function fail() {
+  if (disposed) return;
+  dispose();
+  worldFailed();
+}
+import.meta.hot?.dispose(dispose);
+window.addEventListener(
+  "pagehide",
+  (event) => {
+    if (!event.persisted) dispose();
+  },
+  { signal: runtime.signal },
+);
 const canvas = document.createElement("canvas");
+canvas.tabIndex = 0;
+canvas.inert = true;
 canvas.className = "block h-full w-full touch-none";
 canvas.setAttribute(
   "aria-label",
@@ -45,7 +96,17 @@ canvas.setAttribute(
 );
 root.appendChild(canvas);
 
-const quality = detectQuality(document.createElement("canvas").getContext("webgl2"));
+const probe = document.createElement("canvas").getContext("webgl2");
+const quality = detectQuality(probe);
+probe?.getExtension("WEBGL_lose_context")?.loseContext();
+canvas.addEventListener(
+  "webglcontextlost",
+  (event) => {
+    event.preventDefault();
+    fail();
+  },
+  { signal: runtime.signal },
+);
 const params = new URLSearchParams(location.search);
 /** Automated runs skip the arrival film unless they ask for it. */
 const filmed = !params.has("e2e") || params.has("intro");
@@ -57,16 +118,25 @@ const test = {
   frozen: false,
   step: 0,
   frames: 0,
+  gardenRate: 1,
   /** A fixed camera (eye, target) for stills and films, instead of the follow camera. */
   view: null as null | { eye: THREE.Vector3; target: THREE.Vector3 },
 };
 const waiters: { n: number; done: () => void }[] = [];
 
 async function start() {
-  const world = await World.create(canvas, quality);
+  const world = await World.create(canvas, quality, runtime.signal);
+  if (disposed || runtime.signal.aborted) {
+    world.dispose();
+    return;
+  }
+  cleanups.push(() => world.dispose());
+  runtime.signal.throwIfAborted();
   const { stage, terrain } = world;
-  const gardener = new Gardener(quality);
+  const gardener = new Gardener(quality, runtime.signal);
+  stage.scene.add(gardener.root);
   await gardener.ready;
+  runtime.signal.throwIfAborted();
   gardener.ground = (x, z) => terrain.heightAt(x, z);
   stage.scene.add(gardener.root);
   const dust = new Dust((x, z) => terrain.heightAt(x, z));
@@ -80,6 +150,7 @@ async function start() {
   };
   const ground = (x: number, z: number) => terrain.heightAt(x, z);
   const audio = new AudioEngine();
+  cleanups.push(() => audio.dispose());
   const play = new Play(rulesGround, (cue, opts) => audio.play(cue, opts));
   const base = new Base(ground);
   const caches = new Caches(ground, play.garden.pickups);
@@ -87,16 +158,30 @@ async function start() {
   const target = new Target(ground);
   const kit = new KitView(ground);
   stage.scene.add(base.group, caches.group, plants.group, target.mesh, kit.group);
+  const grazers = new Grazers(ground, quality === "low" ? 2 : 3);
+  stage.scene.add(grazers.group);
+  cleanups.push(() => grazers.dispose());
   // Life in the basin: the lanternfolk on the rim, the builder on the ridge.
   const folk = new Lanternfolk(ground, quality === "low" ? 4 : 7);
   const cairns = new Cairns(ground, 120, -138);
   stage.scene.add(folk.group, cairns.group);
   stage.aoHidden.push(folk.group);
   folk.onGift = (x, z) => {
+    const blooms = play.garden.plants.filter((plant) => plant.bloomed);
+    const point = giftSpot(
+      { x, z },
+      blooms,
+      rulesGround,
+      [
+        ...solidFootprints(),
+        ...play.garden.plants.map((plant) => ({ x: plant.x, z: plant.z, r: 0.6 })),
+      ],
+      terrain.half,
+    );
+    if (!point) return false;
     const gift = {
       id: "gift",
-      x,
-      z,
+      ...point,
       label: "Lanternfolk gift",
       seeds: { orchid: 2 },
       taken: false,
@@ -108,6 +193,7 @@ async function start() {
       "Gardener, they left something by your garden. The suit reads it as a seed. Go and see.",
       12,
     );
+    return true;
   };
   stage.aoHidden.push(target.mesh);
   caches.onTouchdown = (x, y, z) => {
@@ -118,7 +204,10 @@ async function start() {
 
   const hudRoot = document.createElement("div");
   root.appendChild(hudRoot);
-  createRoot(hudRoot).render(
+  const ui = createRoot(hudRoot);
+  cleanups.push(() => ui.unmount());
+  hud.set({ ready: false, reduced: calm });
+  ui.render(
     <>
       <Hud2 />
       <Arrival />
@@ -141,31 +230,71 @@ async function start() {
     heading + Math.PI,
   );
   const camera = new FollowCamera(stage.camera, terrain);
+  camera.calm = calm;
   // A three-quarter view to begin with, the lander in the edge of the frame.
   camera.yaw = player.yaw + 0.65;
-  bindInput(canvas, () => intro.phase === "done");
+  const canPlay = () =>
+    ready &&
+    !document.hidden &&
+    intro.phase === "done" &&
+    !hud.get().controls &&
+    !finale.cinematic &&
+    finale.phase !== "medal";
+  const input = bindInput(canvas, canPlay);
+  cleanups.push(input.dispose);
+  const resetInput = () => {
+    input.reset();
+    player.releaseInput();
+    play.releaseInput();
+  };
   // Sound starts with the first gesture (browsers insist); M mutes.
-  const wake = () => audio.unlock();
+  const wake = () => {
+    if (ready && !disposed) audio.unlock();
+  };
   hud.set({ muted: audio.muted });
-  audio.subscribe((muted) => hud.set({ muted }));
+  cleanups.push(audio.subscribe((muted) => hud.set({ muted })));
   introActions.begin = () => {
     wake();
-    if (intro.phase !== "title") return;
+    if (!ready || intro.phase !== "title") return;
+    resetInput();
     intro.begin();
+    if (calm) intro.skip();
     hud.set({ intro: "descent" });
   };
-  introActions.skip = () => intro.skip();
+  introActions.skip = () => {
+    resetInput();
+    intro.skip();
+  };
   introActions.mute = () => {
     wake();
     audio.toggleMute();
   };
-  window.addEventListener("pointerdown", wake);
-  window.addEventListener("keydown", (e) => {
-    wake();
-    if (e.code === "KeyM") audio.toggleMute();
-    if (e.code === "Enter" && intro.phase === "title") introActions.begin();
-    if (e.code === "Escape" && intro.phase === "descent") introActions.skip();
-  });
+  introActions.controls = (open) => {
+    if (!ready || intro.phase !== "done" || finale.cinematic || finale.phase === "medal") return;
+    resetInput();
+    hud.set({ controls: open });
+    canvas.inert = !canPlay();
+  };
+  window.addEventListener("pointerdown", wake, { signal: runtime.signal });
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (suppressRepeatedActivation(e)) {
+        e.preventDefault();
+        return;
+      }
+      wake();
+      if (!ready || e.repeat || e.altKey || e.ctrlKey || e.metaKey || isEditingTarget(e.target))
+        return;
+      if (e.code === "KeyM") audio.toggleMute();
+      if (e.code === "Enter" && intro.phase === "title" && !nativeKeyTarget(e.target)) {
+        e.preventDefault();
+        introActions.begin();
+      }
+      if (e.code === "Escape" && intro.phase === "descent") introActions.skip();
+    },
+    { signal: runtime.signal },
+  );
   intro.onTouchdown = () => {
     for (let i = 0; i < 10; i++)
       dust.kick(new THREE.Vector3(site.x, site.y, site.z), 2.6, {
@@ -174,7 +303,6 @@ async function start() {
       });
     audio.play("place", { rate: 0.45, gain: 1 });
   };
-  let controlsFor = 0;
 
   // The farm rover, parked by the pad; drivable once its fuel cell is charged (25%).
   const roverBody = new RoverBody();
@@ -190,6 +318,7 @@ async function start() {
       walkingDistance = camera.distance;
       camera.distance = 7.5;
     } else {
+      roverBody.place(roverBody.x, roverBody.z, roverBody.yaw);
       // Step down on the driver's side.
       const c = Math.cos(roverBody.yaw);
       const s = Math.sin(roverBody.yaw);
@@ -224,6 +353,22 @@ async function start() {
   const padAt = new THREE.Vector3(LANDING.x, terrain.heightAt(LANDING.x, LANDING.z), LANDING.z);
   const finale = new Finale(ship, padAt, { ...DOME, y: terrain.heightAt(DOME.x, DOME.z) }, door);
   const shipObstacle = { x: padAt.x, z: padAt.z, r: 5.8 };
+  const solidFootprints = () => [
+    ...grazers.obstacles,
+    ...base.obstacles,
+    ...caches.obstacles,
+    landerObstacle,
+    { x: roverBody.x, z: roverBody.z, r: 1.8 },
+    ...(finale.phase === "idle" ? [] : [shipObstacle]),
+  ];
+  play.placementBlocked = (action) => {
+    const clearance =
+      action.kind === "plant" ? Math.max(0.8, SPECIES[action.species].space / 2) : 0.8;
+    return solidFootprints().some(
+      (obstacle) =>
+        Math.hypot(action.x - obstacle.x, action.z - obstacle.z) < obstacle.r + clearance,
+    );
+  };
   let callIn = -1;
   play.onEvent = (e) => {
     if (e.type === "milestone" && e.unlock === "full") {
@@ -237,6 +382,10 @@ async function start() {
     "position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:25";
   root.appendChild(fader);
   finale.onPhase = (p) => {
+    resetInput();
+    if (p === "waiting" || p === "walk" || p === "breath" || p === "medal")
+      hud.set({ shipLanded: true });
+    if (driving && (p === "landing" || p === "walk" || p === "breath")) play.onDrive?.(false);
     const g = play.garden;
     if (p === "landing" || p === "walk" || p === "breath")
       hud.set({ hidden: true, controls: false });
@@ -259,9 +408,13 @@ async function start() {
     }
   };
   introActions.resume = () => {
+    if (finale.phase !== "medal") return;
+    resetInput();
     finale.resume();
     hud.set({ ending: null, hidden: false });
+    canvas.inert = !canPlay();
     gardener.helmetOff = 0;
+    finale.lift = 0;
     // Back outside, by the airlock, facing the pad.
     player.place(
       door.x + Math.sin(toPad) * 2.5,
@@ -305,7 +458,7 @@ async function start() {
   );
 
   const resize = () => stage.resize(window.innerWidth, window.innerHeight);
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", resize, { signal: runtime.signal });
   resize();
 
   const motion: Motion = stillMotion();
@@ -313,25 +466,48 @@ async function start() {
   let last = performance.now();
   let first = true;
   let dustLevel = 0.12;
+  let lastIntro = intro.phase;
+  let lastRail = "";
+  const syncMotion = () => {
+    calm = motionQuery.matches;
+    hud.set({ reduced: calm });
+    if (calm && intro.phase === "descent") intro.skip();
+    camera.calm = calm;
+  };
+  motionQuery.addEventListener("change", syncMotion, { signal: runtime.signal });
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      resetInput();
+      last = performance.now();
+    },
+    { signal: runtime.signal },
+  );
+  window.addEventListener("blur", resetInput, { signal: runtime.signal });
 
-  const frame = (now: number) => {
+  const tick = (now: number) => {
+    if (motionQuery.matches !== calm) syncMotion();
     const raw = Math.min(0.1, (now - last) / 1000);
     last = now;
-    const dt = test.frozen ? test.step : raw;
+    const dt = document.hidden ? 0 : test.frozen ? test.step : raw;
     test.step = 0;
 
-    const intent = readIntent();
-    if (callIn > 0) {
+    const intent = readIntent(dt > 0, dt);
+    if (callIn > 0 && !hud.get().controls) {
       callIn -= dt;
       if (callIn <= 0) finale.call();
     }
     const playing =
       (intro.phase === "done" || intro.phase === "arrive") &&
       !finale.cinematic &&
+      !hud.get().controls &&
       finale.phase !== "medal";
     if (!playing) {
       intent.moveX = intent.moveY = 0;
-      intent.interact = intent.jump = false;
+      intent.interact = intent.jump = intent.run = false;
+      intent.seedSlot = -1;
+      intent.seedStep = 0;
+      intent.lookX = intent.lookY = intent.zoom = 0;
     }
     camera.drag(intent.lookX, intent.lookY);
     if (intent.zoom) camera.zoom(intent.zoom);
@@ -340,13 +516,14 @@ async function start() {
     const wz = b.rz * intent.moveX + b.fz * intent.moveY;
     const kneeling = play.kneel > 0.05;
     const blockers = [
+      ...grazers.obstacles,
       ...base.obstacles,
       ...caches.obstacles,
       landerObstacle,
       ...(finale.phase === "idle" ? [] : [shipObstacle]),
     ];
     player.jets = play.garden.unlocked.has("jets");
-    if (driving && !finale.cinematic) {
+    if (driving && playing) {
       roverBody.update({ throttle: intent.moveY, steer: intent.moveX }, dt, terrain, blockers);
       rover.update(roverBody, dt);
       // The gardener rides in the driving seat.
@@ -355,7 +532,7 @@ async function start() {
       player.z = seat.z;
       player.y = seat.y - 0.62;
       player.yaw = roverBody.yaw;
-    } else if (!finale.cinematic)
+    } else if (playing)
       player.update(
         {
           x: kneeling ? 0 : wx,
@@ -369,21 +546,14 @@ async function start() {
       );
     play.rover.driving = driving;
     play.rover.near = !driving && Math.hypot(player.x - roverBody.x, player.z - roverBody.z) < 3.4;
-    play.update(dt, intent, player);
+    play.update(playing ? dt * test.gardenRate : 0, intent, player);
     if (intro.phase === "arrive" && !gardener.root.visible) {
       gardener.root.visible = true;
-      hud.set({ intro: "play", hidden: false, controls: true });
-      controlsFor = 18;
-      play.start();
-    }
-    if (controlsFor > 0) {
-      controlsFor -= dt;
-      if (controlsFor <= 0) hud.set({ controls: false });
     }
 
     gardener.root.position.set(player.x, player.y, player.z);
     gardener.root.rotation.y = player.yaw;
-    motion.speed = driving ? 0 : player.speed;
+    motion.speed = playing && !driving ? player.speed : 0;
     motion.grounded = driving || player.grounded;
     motion.vy = player.grounded ? player.landing : player.vy;
     motion.turn = player.turn;
@@ -402,6 +572,33 @@ async function start() {
     dustLevel = Math.min(0.85, dustLevel + player.speed * dt * 0.002);
     gardener.dust = dustLevel;
 
+    const shortLandscape =
+      window.innerWidth <= 720 &&
+      window.innerHeight <= 550 &&
+      window.innerWidth > window.innerHeight;
+    const compactPortrait =
+      window.innerWidth <= 400 &&
+      window.innerHeight <= 650 &&
+      window.innerWidth <= window.innerHeight;
+    const layoutActive = intro.phase === "done" && !finale.cinematic && finale.phase !== "medal";
+    const rail = layoutActive && shortLandscape ? Math.min(260, window.innerWidth * 0.46) : 0;
+    const verticalOffset = layoutActive && compactPortrait ? 50 : 0;
+    camera.frameScale = layoutActive && compactPortrait ? 1.4 : 1;
+    const railKey = `${rail}:${verticalOffset}:${window.innerWidth}:${window.innerHeight}`;
+    if (railKey !== lastRail) {
+      if (rail || verticalOffset)
+        stage.camera.setViewOffset(
+          window.innerWidth,
+          window.innerHeight,
+          rail / 2,
+          verticalOffset,
+          window.innerWidth,
+          window.innerHeight,
+        );
+      else stage.camera.clearViewOffset();
+      lastRail = railKey;
+    }
+    camera.side = window.innerWidth < window.innerHeight ? 0.12 : 0.6;
     if (driving) {
       focus.set(roverBody.x, terrain.heightAt(roverBody.x, roverBody.z) + 0.4, roverBody.z);
       camera.update(dt, focus, roverBody.yaw, Math.abs(roverBody.speed) > 0.3);
@@ -410,20 +607,28 @@ async function start() {
       camera.update(dt, focus, player.yaw, player.speed > 0.2);
     }
     if (intro.phase !== "done") {
-      intro.update(dt);
+      intro.update(dt, calm);
       if (intro.phase === "arrive") {
         const eye = stage.camera.position.clone();
         const look = stage.camera
           .getWorldDirection(new THREE.Vector3())
           .multiplyScalar(10)
           .add(eye);
-        intro.finish(eye, look, dt);
+        intro.finish(eye, look, dt, calm);
       }
       stage.camera.position.copy(intro.eye);
       stage.camera.lookAt(intro.target);
     }
+    if (intro.phase !== lastIntro) {
+      resetInput();
+      if (intro.phase === "done") {
+        hud.set({ intro: "play", hidden: false, controls: true });
+        play.start();
+      }
+      lastIntro = intro.phase;
+    }
     if (finale.phase !== "idle") {
-      finale.update(dt, oxygenShare(play.garden) >= 1);
+      finale.update(dt, oxygenShare(play.garden) >= 1, calm);
       if (finale.cinematic || finale.phase === "medal") {
         stage.camera.position.copy(finale.eye);
         stage.camera.lookAt(finale.target);
@@ -440,6 +645,18 @@ async function start() {
     base.update(dt, share);
     caches.update(dt, play.garden.unlocked);
     kit.update(dt, play.garden);
+    grazers.update(dt, {
+      player,
+      plants: play.garden.plants,
+      obstacles: [
+        ...base.obstacles,
+        ...caches.obstacles,
+        landerObstacle,
+        { x: roverBody.x, z: roverBody.z, r: 1.8 },
+        ...(finale.phase === "idle" ? [] : [shipObstacle]),
+      ],
+      calm,
+    });
     folk.update(
       dt,
       world.sunClear,
@@ -452,7 +669,7 @@ async function start() {
       focus,
     );
     target.update(dt, play.action);
-    world.update(dt, focus);
+    world.update(dt * test.gardenRate, focus);
     world.render();
     governor.sample(raw);
 
@@ -466,16 +683,33 @@ async function start() {
     }
     if (first) {
       first = false;
-      requestAnimationFrame(() => worldReady());
+      ready = true;
+      worldReady();
+      hud.set({ ready: true });
       if (!filmed) play.start();
     }
-    requestAnimationFrame(frame);
+    canvas.inert = !canPlay();
   };
-  requestAnimationFrame(frame);
+  const frame = (now: number) => {
+    if (disposed) return;
+    try {
+      tick(now);
+    } catch {
+      fail();
+      return;
+    }
+    frameId = requestAnimationFrame(frame);
+  };
+  frameId = requestAnimationFrame(frame);
 
   if (import.meta.env.DEV || new URLSearchParams(location.search).has("e2e")) {
     (window as unknown as Record<string, unknown>).__GAME__ = {
-      ready: true,
+      get ready() {
+        return ready;
+      },
+      clock(rate = 1) {
+        test.gardenRate = Number.isFinite(rate) ? Math.max(1, Math.min(600, rate)) : 1;
+      },
       freeze(on = true) {
         test.frozen = on;
       },
@@ -510,6 +744,10 @@ async function start() {
           y: player.y,
           z: player.z,
           speed: player.speed,
+          yaw: player.yaw,
+          grounded: player.grounded,
+          thrusting: player.thrusting,
+          rover: { x: roverBody.x, z: roverBody.z },
           quality,
           scale: stage.renderScale,
           oxygen: oxygenShare(g),
@@ -518,6 +756,19 @@ async function start() {
           can: g.can,
           action: play.action?.kind ?? null,
           sunClear: world.sunClear,
+          time: g.time,
+          intro: intro.phase,
+          finale: finale.phase,
+          selected: play.selected,
+          driving,
+          unlocked: [...g.unlocked],
+          guide: hud.get().radio.map((line) => line.text),
+          renderer: {
+            calls: stage.renderer.info.render.calls,
+            triangles: stage.renderer.info.render.triangles,
+            ...stage.renderer.info.memory,
+            pixelRatio: stage.renderer.getPixelRatio(),
+          },
         };
       },
       /** The garden itself, for tests that set up a scene. */
@@ -540,8 +791,10 @@ async function start() {
           bloomed: true,
         });
       },
+      grazers: () => grazers.snapshot(),
+      grazerDiagnostics: () => grazers.diagnostics(),
       finale: () => finale.phase,
     };
   }
 }
-start();
+start().catch(fail);
