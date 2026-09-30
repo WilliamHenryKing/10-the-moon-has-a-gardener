@@ -7,20 +7,23 @@ import { FollowCamera } from "./engine/follow-camera";
 import { bindInput, readIntent } from "./engine/input";
 import { detectQuality, FrameGovernor } from "./engine/quality";
 import { World } from "./engine/world";
-import { oxygenShare } from "./game/garden";
+import { DOME as DOME_UNITS, medal, oxygenShare } from "./game/garden";
 import type { HeightQuery } from "./game/light";
 import { Play } from "./game/play";
 import { Player } from "./game/player";
 import { worldReady } from "./loader";
-import { Base, DOME } from "./scene/base";
+import { Base, DOME, LANDING } from "./scene/base";
 import { Caches } from "./scene/caches";
+import { Finale } from "./scene/finale";
 import { Gardener, type Motion, stillMotion } from "./scene/gardener/gardener";
 import { Intro } from "./scene/intro";
 import { KitView } from "./scene/kit";
 import { Lander } from "./scene/lander";
+import { Perennial } from "./scene/perennial";
 import { GardenView } from "./scene/plants/garden-view";
 import { Target } from "./scene/target";
 import { Arrival } from "./ui/Arrival";
+import { Ending } from "./ui/Ending";
 import { Hud2 } from "./ui/Hud2";
 import { hud, introActions } from "./ui/hud-store";
 import { sunAzimuth } from "./world/sky-model";
@@ -93,6 +96,7 @@ async function start() {
     <>
       <Hud2 />
       <Arrival />
+      <Ending />
     </>,
   );
 
@@ -145,6 +149,64 @@ async function start() {
     audio.play("place", { rate: 0.45, gain: 1 });
   };
   let controlsFor = 0;
+
+  // The ending: the Perennial on the landing ring, its colonists, the walk to the airlock.
+  const toPad = Math.atan2(-DOME.x, -DOME.z);
+  const door = new THREE.Vector3(DOME.x + Math.sin(toPad) * 7.4, 0, DOME.z + Math.cos(toPad) * 7.4);
+  door.y = terrain.heightAt(door.x, door.z);
+  const ship = new Perennial(ground, door);
+  stage.scene.add(ship.root, ...ship.people);
+  const padAt = new THREE.Vector3(LANDING.x, terrain.heightAt(LANDING.x, LANDING.z), LANDING.z);
+  const finale = new Finale(ship, padAt, { ...DOME, y: terrain.heightAt(DOME.x, DOME.z) }, door);
+  const shipObstacle = { x: padAt.x, z: padAt.z, r: 5.8 };
+  let callIn = -1;
+  play.onEvent = (e) => {
+    if (e.type === "milestone" && e.unlock === "full") {
+      if (finale.phase === "idle") callIn = 6;
+      else finale.full();
+    }
+    if (e.type === "arrived") finale.call();
+  };
+  const fader = document.createElement("div");
+  fader.style.cssText =
+    "position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:25";
+  root.appendChild(fader);
+  finale.onPhase = (p) => {
+    const g = play.garden;
+    if (p === "landing" || p === "walk" || p === "breath")
+      hud.set({ hidden: true, controls: false });
+    if (p === "waiting") hud.set({ hidden: false });
+    if (p === "breath") {
+      player.place(finale.stand.x, finale.stand.z, terrain, finale.stand.yaw);
+      gardener.root.visible = true;
+    }
+    if (p === "medal") {
+      const m = medal(g) ?? "bronze";
+      hud.set({
+        ending: {
+          medal: m,
+          minutes: (g.filledAt >= 0 ? g.filledAt : g.time) / 60,
+          plants: g.plants.length,
+          species: g.journal.size,
+        },
+      });
+      audio.play("ending");
+    }
+  };
+  introActions.resume = () => {
+    finale.resume();
+    hud.set({ ending: null, hidden: false });
+    gardener.helmetOff = 0;
+    // Back outside, by the airlock, facing the pad.
+    player.place(
+      door.x + Math.sin(toPad) * 2.5,
+      door.z + Math.cos(toPad) * 2.5,
+      terrain,
+      toPad + Math.PI,
+    );
+    camera.yaw = player.yaw;
+  };
+  introActions.replay = () => location.reload();
   if (filmed) {
     hud.set({ intro: "title", hidden: true });
     gardener.root.visible = false;
@@ -194,7 +256,14 @@ async function start() {
     test.step = 0;
 
     const intent = readIntent();
-    const playing = intro.phase === "done" || intro.phase === "arrive";
+    if (callIn > 0) {
+      callIn -= dt;
+      if (callIn <= 0) finale.call();
+    }
+    const playing =
+      (intro.phase === "done" || intro.phase === "arrive") &&
+      !finale.cinematic &&
+      finale.phase !== "medal";
     if (!playing) {
       intent.moveX = intent.moveY = 0;
       intent.interact = intent.jump = false;
@@ -205,17 +274,23 @@ async function start() {
     const wx = b.rx * intent.moveX + b.fx * intent.moveY;
     const wz = b.rz * intent.moveX + b.fz * intent.moveY;
     const kneeling = play.kneel > 0.05;
-    player.update(
-      {
-        x: kneeling ? 0 : wx,
-        z: kneeling ? 0 : wz,
-        run: intent.run,
-        jump: intent.jump && !kneeling,
-      },
-      dt,
-      terrain,
-      [...base.obstacles, ...caches.obstacles, landerObstacle],
-    );
+    if (!finale.cinematic)
+      player.update(
+        {
+          x: kneeling ? 0 : wx,
+          z: kneeling ? 0 : wz,
+          run: intent.run,
+          jump: intent.jump && !kneeling,
+        },
+        dt,
+        terrain,
+        [
+          ...base.obstacles,
+          ...caches.obstacles,
+          landerObstacle,
+          ...(finale.phase === "idle" ? [] : [shipObstacle]),
+        ],
+      );
     play.update(dt, intent, player);
     if (intro.phase === "arrive" && !gardener.root.visible) {
       gardener.root.visible = true;
@@ -235,6 +310,8 @@ async function start() {
     motion.vy = player.grounded ? player.landing : player.vy;
     motion.turn = player.turn;
     motion.kneel = play.kneel;
+    motion.lift = finale.lift;
+    if (finale.cinematic) gardener.helmetOff = finale.helmet;
     const rel = Math.atan2(Math.sin(camera.yaw - player.yaw), Math.cos(camera.yaw - player.yaw));
     motion.lookYaw = -rel * 0.3;
     motion.lookPitch = -camera.pitch * 0.3;
@@ -257,6 +334,14 @@ async function start() {
       }
       stage.camera.position.copy(intro.eye);
       stage.camera.lookAt(intro.target);
+    }
+    if (finale.phase !== "idle") {
+      finale.update(dt, oxygenShare(play.garden) >= 1);
+      if (finale.cinematic || finale.phase === "medal") {
+        stage.camera.position.copy(finale.eye);
+        stage.camera.lookAt(finale.target);
+      }
+      fader.style.opacity = String(finale.cinematic ? finale.fade : 0);
     }
     if (test.view) {
       stage.camera.position.copy(test.view.eye);
@@ -339,6 +424,25 @@ async function start() {
       },
       /** The garden itself, for tests that set up a scene. */
       garden: () => play.garden,
+      /** Fill the dome to the brim (the next frame completes it), for the ending. */
+      fill() {
+        play.garden.oxygen = DOME_UNITS - 0.01;
+        play.garden.plants.push({
+          id: 9999,
+          species: "mooncress",
+          x: 30,
+          z: 30,
+          growth: 1,
+          water: 1,
+          sun: 0.8,
+          earth: 0,
+          wet: 0,
+          fit: 1,
+          harvestIn: 0,
+          bloomed: true,
+        });
+      },
+      finale: () => finale.phase,
     };
   }
 }

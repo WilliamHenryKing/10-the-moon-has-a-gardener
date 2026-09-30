@@ -55,6 +55,8 @@ export class Play {
   private wasInteract = false;
   private publishIn = 0;
   private started = false;
+  /** Every garden event, for the scene (the finale listens for the dome filling). */
+  onEvent: ((e: GardenEvent) => void) | null = null;
 
   constructor(
     private ground: HeightQuery,
@@ -86,6 +88,7 @@ export class Play {
     for (const e of drainEvents(g)) {
       this.guide.event(e, g);
       this.react(e);
+      this.onEvent?.(e);
     }
     this.guide.update(dt, g);
     if (count(g, this.selected) <= 0) this.selected = nextSeed(g, this.selected, POUCH);

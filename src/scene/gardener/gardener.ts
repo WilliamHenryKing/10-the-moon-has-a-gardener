@@ -22,6 +22,8 @@ export interface Motion {
   turn: number;
   /** 0 … 1 kneeling (planting). */
   kneel: number;
+  /** 0 … 1 both arms raised to the helmet (taking it off). */
+  lift: number;
   /** Where the camera looks, relative to the body (radians). */
   lookYaw: number;
   lookPitch: number;
@@ -33,11 +35,14 @@ export const stillMotion = (): Motion => ({
   vy: 0,
   turn: 0,
   kneel: 0,
+  lift: 0,
   lookYaw: 0,
   lookPitch: 0,
 });
 
 const TWO_PI = Math.PI * 2;
+/** The parts that come off with the helmet. */
+const HELMET = new Set(["helmet", "visor", "lamp-1", "lamp1", "lens-1", "lens1"]);
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 const smooth = (a: number, b: number, x: number) => {
@@ -127,6 +132,8 @@ export class Gardener {
   private skeleton: THREE.Skeleton;
   private v = 0;
   private time = 0;
+  private helmetParts = new THREE.Group();
+  private bareHead: THREE.Group | null = null;
   private lastU = [0, 0];
   private settle = new Spring(90, 11);
   private headLag = { x: new Spring(120, 18), y: new Spring(120, 18) };
@@ -174,6 +181,9 @@ export class Gardener {
     body.frustumCulled = false;
     this.root.add(body);
     const materials = partMaterials(this.screen);
+    const head = bindOf("head");
+    this.helmetParts.position.set(0, 0, 0);
+    this.b("head").add(this.helmetParts, this.buildHead(head));
     for (const p of parts) {
       const geo = geometry(p.positions, p.normals, p.indices);
       if (p.material === "screen") {
@@ -194,8 +204,59 @@ export class Gardener {
       mesh.castShadow = p.material !== "glass" && p.material !== "lamp" && p.material !== "screen";
       mesh.receiveShadow = true;
       if (p.material === "glass") mesh.renderOrder = 5;
-      this.b(p.bone).add(mesh);
+      mesh.name = p.name;
+      if (HELMET.has(p.name)) this.helmetParts.add(mesh);
+      else this.b(p.bone).add(mesh);
     }
+  }
+
+  /** The gardener's own head, for when the helmet comes off: hair and ears, seen from behind. */
+  private buildHead(at: readonly number[]) {
+    const g = new THREE.Group();
+    const skin = new THREE.MeshStandardMaterial({ color: 0xa8775a, roughness: 0.62 });
+    const hair = new THREE.MeshStandardMaterial({ color: 0x2a1c13, roughness: 0.78 });
+    const c = new THREE.Vector3(0 - (at[0] ?? 0), 1.672 - (at[1] ?? 0), -0.012 - (at[2] ?? 0));
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.094, 24, 16), skin);
+    skull.scale.set(0.92, 1.08, 1);
+    skull.position.copy(c);
+    // Short hair over the crown and the back, the face left clear.
+    const cap = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.62),
+      hair,
+    );
+    cap.scale.set(0.95, 1.08, 1.04);
+    cap.position.copy(c).add(new THREE.Vector3(0, 0.008, 0.012));
+    cap.rotation.x = 0.35;
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.055, 0.12, 16), skin);
+    neck.position.copy(c).add(new THREE.Vector3(0, -0.11, 0.01));
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), skin);
+      ear.scale.set(0.45, 1, 0.8);
+      ear.position.copy(c).add(new THREE.Vector3(s * 0.086, -0.005, 0.005));
+      g.add(ear);
+    }
+    g.add(skull, cap, neck);
+    g.traverse((o) => {
+      if (o instanceof THREE.Mesh) {
+        o.castShadow = true;
+        o.receiveShadow = true;
+      }
+    });
+    g.visible = false;
+    this.bareHead = g;
+    return g;
+  }
+
+  /**
+   * Taking the helmet off, 0 … 1: it rises in both hands, clears the head, and comes down to be
+   * held against the chest. Pair with `Motion.lift` for the arms.
+   */
+  set helmetOff(t: number) {
+    const up = smooth(0.15, 0.55, t);
+    const down = smooth(0.6, 1, t);
+    this.helmetParts.position.set(0, up * 0.3 - down * 0.72, -up * 0.04 - down * 0.2);
+    this.helmetParts.rotation.set(-up * 0.25 + down * 0.5, 0, 0);
+    if (this.bareHead) this.bareHead.visible = t > 0.3;
   }
 
   /** Dust worked into the suit so far (0 … 1). */
@@ -273,14 +334,14 @@ export class Gardener {
         -footZ * (0.5 - 0.25 * lope) * move * amp,
         dt,
       );
-      const out = 0.12 + 0.18 * lope * move + this.air * 0.55;
+      const out = 0.12 + 0.18 * lope * move + this.air * 0.55 + m.lift * 0.28;
       this.b(i === 0 ? "armL" : "armR").rotation.set(
-        swing + this.air * 0.25 + m.kneel * 0.6,
+        swing + this.air * 0.25 + m.kneel * 0.6 + m.lift * 2.55,
         0,
         s * out,
       );
       this.b(i === 0 ? "foreArmL" : "foreArmR").rotation.set(
-        0.35 + 0.35 * lope + m.kneel * 0.5,
+        0.35 + 0.35 * lope + m.kneel * 0.5 + m.lift * 1.15,
         0,
         0,
       );

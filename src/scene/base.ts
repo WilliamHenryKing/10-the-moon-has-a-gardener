@@ -245,6 +245,8 @@ export class Base {
     );
     greens.count = 0;
     greens.position.y = 0.45;
+    // Its instances come and go; bounds computed while it was empty would cull them all.
+    greens.frustumCulled = false;
     const mist = mistMaterial(r * 0.97);
     const air = new THREE.Mesh(
       new THREE.SphereGeometry(r * 0.97, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2),

@@ -25,7 +25,7 @@ function rod(a: THREE.Vector3, b: THREE.Vector3, r: number, mat: THREE.Material)
   return m;
 }
 
-function plumeTexture() {
+export function plumeTexture() {
   const c = document.createElement("canvas");
   c.width = 64;
   c.height = 256;

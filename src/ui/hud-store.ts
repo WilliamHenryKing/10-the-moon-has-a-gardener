@@ -39,6 +39,8 @@ export interface HudState {
   /** The controls card, shown as play begins. */
   controls: boolean;
   muted: boolean;
+  /** The medal card at the end: how it went. */
+  ending: { medal: Medal; minutes: number; plants: number; species: number } | null;
 }
 
 let state: HudState = {
@@ -68,6 +70,7 @@ let state: HudState = {
   intro: "play",
   controls: false,
   muted: false,
+  ending: null,
 };
 const listeners = new Set<() => void>();
 
@@ -95,6 +98,9 @@ export const introActions = {
   begin: () => {},
   skip: () => {},
   mute: () => {},
+  /** From the medal card: back to the garden, or start again. */
+  resume: () => {},
+  replay: () => {},
 };
 
 let bannerId = 1;
