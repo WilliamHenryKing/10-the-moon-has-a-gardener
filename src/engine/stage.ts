@@ -3,6 +3,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { Pass } from "three/addons/postprocessing/Pass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { type Dir, earthDirection } from "../world/sky-model";
@@ -20,6 +21,33 @@ import { type Quality, TIERS } from "./quality";
 
 /** The layer the far camera draws. */
 export const FAR_LAYER = 1;
+
+/**
+ * Keeps the frame finite before the glow and the tone mapping. One NaN pixel (some GPUs, Apple's
+ * among them, make one where others quietly do not) would be blurred by the bloom's smallest
+ * levels across the whole screen and turn every pixel black for that frame. NaN and infinity
+ * are found by their exponent bits, a test no fast-math compiler can assume away; they become
+ * black, and anything absurdly bright is capped.
+ */
+const FiniteShader = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    varying vec2 vUv;
+    float finite(float x) {
+      return (floatBitsToUint(x) & 0x7f800000u) == 0x7f800000u ? 0.0 : clamp(x, 0.0, 16384.0);
+    }
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      gl_FragColor = vec4(finite(c.r), finite(c.g), finite(c.b), 1.0);
+    }`,
+};
 
 /** Draws the far layer, clears depth, then draws the near scene over it. */
 class LayeredRenderPass extends Pass {
@@ -109,7 +137,8 @@ export class Stage {
     this.scene.background = null;
     this.farCamera.layers.set(FAR_LAYER);
 
-    this.sun.castShadow = true;
+    // ?shadows=0 turns the Sun's shadow map off (diagnostics on devices that misbehave).
+    this.sun.castShadow = new URLSearchParams(location.search).get("shadows") !== "0";
     this.sun.shadow.mapSize.set(tier.shadow, tier.shadow);
     const sc = this.sun.shadow.camera;
     sc.left = sc.bottom = -SHADOW_HALF;
@@ -132,6 +161,7 @@ export class Stage {
     });
     this.composer = new EffectComposer(this.renderer, target);
     this.composer.addPass(new LayeredRenderPass(this.scene, this.camera, this.farCamera));
+    this.composer.addPass(new ShaderPass(FiniteShader));
     this.ao = new GTAOPass(this.scene, this.camera, 1, 1);
     this.ao.blendIntensity = 0.85;
     this.ao.updateGtaoMaterial({

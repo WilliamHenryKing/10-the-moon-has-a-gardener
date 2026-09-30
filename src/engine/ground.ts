@@ -95,18 +95,23 @@ const REGOLITH_NORMAL = /* glsl */ `
     vec3 nt = blendN(nd, mix(vec3(0.0, 0.0, 1.0), nr, 0.4 + 0.6 * roughMix));
     // Top projection: tangent space x → world +x, y → world -z (OpenGL normal maps).
     vec3 top = normalize(vec3(nt.x, nt.z, -nt.y));
-    // Steep walls: the meteor scan, projected from the side the wall faces.
+    // Steep walls: the meteor scan, projected from the side the wall faces. Both projections are
+    // read outside any branch (a texture read in a branch that differs between neighbouring
+    // pixels has no defined mip level, and Apple GPUs can return garbage there), no zero vector
+    // is ever normalised (flat ground has sign(0) = 0 here), and on open ground, where the wall
+    // weight is zero, the side vector is not used at all: 0 × NaN would still be NaN.
     vec3 wn = vWorldNormal;
-    vec3 side;
-    if (abs(wn.x) > abs(wn.z)) {
-      vec3 t = unpackN(texture2D(meteorNormal, vWorld.zy / 4.0).rgb);
-      side = normalize(vec3(t.z * sign(wn.x), t.y, t.x));
-    } else {
-      vec3 t = unpackN(texture2D(meteorNormal, vWorld.xy / 4.0).rgb);
-      side = normalize(vec3(t.x, t.y, t.z * sign(wn.z)));
-    }
+    vec3 tx = unpackN(texture2D(meteorNormal, vWorld.zy / 4.0).rgb);
+    vec3 tz = unpackN(texture2D(meteorNormal, vWorld.xy / 4.0).rgb);
+    float facingX = step(abs(wn.z), abs(wn.x));
+    vec3 side = mix(
+      vec3(tz.x, tz.y, tz.z * (wn.z < 0.0 ? -1.0 : 1.0)),
+      vec3(tx.z * (wn.x < 0.0 ? -1.0 : 1.0), tx.y, tx.x),
+      facingX
+    );
+    side *= inversesqrt(max(dot(side, side), 1e-8));
     // Rotate the detail onto the true ground normal (reoriented around +Y).
-    vec3 detail = normalize(mix(top, side, wall));
+    vec3 detail = wall > 0.0 ? normalize(mix(top, side, wall)) : top;
     vec3 base = normalize(wn);
     vec3 axis = cross(vec3(0.0, 1.0, 0.0), base);
     float s = length(axis);
