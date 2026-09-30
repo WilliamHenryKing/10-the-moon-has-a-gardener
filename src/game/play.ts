@@ -53,6 +53,8 @@ export class Play {
   private kneelFor = 0;
   private guide = new Guide(say);
   private wasInteract = false;
+  private lastKey = "";
+  private since = 0;
   private publishIn = 0;
   private started = false;
   /** Every garden event, for the scene (the finale listens for the dome filling). */
@@ -83,14 +85,22 @@ export class Play {
     if (!this.started) return;
     this.choose(intent);
     const busy = this.kneelFor > 0 || (!player.grounded && !this.rover.driving);
-    this.action = this.rover.driving
-      ? { kind: "leave" }
-      : this.rover.near && g.unlocked.has("rover")
-        ? { kind: "drive" }
-        : nextAction(g, this.ground, player.x, player.z, player.yaw, this.selected);
     const pressed = intent.interact && !this.wasInteract;
+    // What E would do: re-read the spot only when the gardener has moved or turned (reading a
+    // spot's light means tracing its skyline for the whole day), or when E is pressed.
+    const key = `${player.x.toFixed(1)},${player.z.toFixed(1)},${player.yaw.toFixed(2)},${this.selected},${g.plants.length},${g.can},${this.rover.near},${this.rover.driving}`;
+    this.since += dt;
+    if (pressed || key !== this.lastKey || this.since > 0.5) {
+      this.since = 0;
+      this.lastKey = key;
+      this.action = this.rover.driving
+        ? { kind: "leave" }
+        : this.rover.near && g.unlocked.has("rover")
+          ? { kind: "drive" }
+          : nextAction(g, this.ground, player.x, player.z, player.yaw, this.selected);
+    }
     this.wasInteract = intent.interact;
-    if (pressed && !busy) this.act(this.action);
+    if (pressed && !busy && this.action) this.act(this.action);
 
     step(g, dt);
     for (const e of drainEvents(g)) {
