@@ -1,0 +1,45 @@
+{
+  "slug": "10-the-moon-has-a-gardener",
+  "sourceCommit": "51ec6f63efb607a0641f1bf3d2b507858f7f3ea4",
+  "url": "https://10-the-moon-has-a-gardener.williamking.workers.dev",
+  "capturedAt": "2026-10-01T06:19:12.795Z",
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2060 (0x00001F15) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "errors": [],
+  "desktop": {
+    "width": 1440,
+    "height": 900
+  },
+  "phone": {
+    "width": 390,
+    "height": 844
+  },
+  "frames": 48,
+  "browser": "154.0.8037.58",
+  "assets": [
+    "/assets/index-CEOV6fEk.js"
+  ],
+  "matchesLocalBuild": true,
+  "phoneOverflow": false,
+  "gifBytes": 2640279,
+  "description": "The current lunar title and lander descent over the south-pole terrain",
+  "phoneIsEmulated": true,
+  "loop": {
+    "frames": 48,
+    "delayCentiseconds": 16,
+    "width": 720,
+    "disposal": "None"
+  },
+  "media": [
+    "preview.gif",
+    "desktop.jpg",
+    "detail.jpg",
+    "phone.jpg"
+  ],
+  "additionalMedia": [
+    {
+      "file": "grazer.jpg",
+      "source": "Current release GPU verification",
+      "sourceCommit": "51ec6f63efb607a0641f1bf3d2b507858f7f3ea4"
+    }
+  ]
+}

@@ -1,79 +1,95 @@
-<p align="center"><img src="docs/readme/banner.svg" alt="THE MOON HAS A GARDENER: grow a garden that breathes the dome full before the colony ship lands." width="100%"></p>
+# THE MOON HAS A GARDENER
 
-<p align="center">
-  <a href="https://10-the-moon-has-a-gardener.williamking.workers.dev"><img alt="Play it live" src="https://img.shields.io/badge/Play_it_live-%E2%96%B6-7fd08a?style=for-the-badge&labelColor=06080e"></a>
-  <img alt="Three.js" src="https://img.shields.io/badge/Three.js-7fd08a?style=for-the-badge&logo=threedotjs&logoColor=06080e&labelColor=06080e">
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-7fd08a?style=for-the-badge&logo=typescript&logoColor=06080e&labelColor=06080e">
-  <img alt="React" src="https://img.shields.io/badge/React-7fd08a?style=for-the-badge&logo=react&logoColor=06080e&labelColor=06080e">
-  <img alt="Vite" src="https://img.shields.io/badge/Vite-7fd08a?style=for-the-badge&logo=vite&logoColor=06080e&labelColor=06080e">
-  <img alt="Bun" src="https://img.shields.io/badge/Bun-7fd08a?style=for-the-badge&logo=bun&logoColor=06080e&labelColor=06080e">
-</p>
+<p align="center"><img src="docs/readme/banner.svg" alt="THE MOON HAS A GARDENER" width="100%"></p>
 
-**A free-roam garden at the real lunar south pole.** The colony ship *Perennial* lands in eighteen minutes with twelve people aboard, and the new dome holds no air. Lope across a crater basin in one-sixth gravity, plant seven alien species where the low Sun suits each one, water them from the ice, and let their blooms breathe the dome full. Then take off your helmet inside it: the first breath on the Moon.
+Grow the colony's first air at the lunar south pole. The Perennial is approaching with twelve people aboard, and the dome is empty. Plant an alien garden, find water and shade, unlock the rover and suit jets, then step inside and take off your helmet.
 
-<p align="center"><img src="docs/readme/preview.gif" alt="The lander's descent over the south pole, the garden in bloom as the Sun circles, and the lanternfolk coming down at dusk" width="720"></p>
+**[Begin the descent →](https://10-the-moon-has-a-gardener.williamking.workers.dev)** · [Run locally](#run-locally) · [Credits](#credits)
 
-## How to play
+<p align="center"><img src="docs/readme/preview.gif" alt="The current lunar title and lander descent over the south-pole terrain" width="800"></p>
 
-The Sun never climbs here: it circles the horizon once every eight minutes, about ten degrees up, so every hill and crater rim throws a long shadow that sweeps round with it. Each species wants its own share of the day in sunlight, and a ring on the ground shows, before you plant, how well a spot will suit the seed you hold (green: it will thrive). Plants grow while they are watered, and blooms breathe into the dome.
+## From landing pad to living garden
 
-| Species | Wants | Where |
+The opening descends from the lunar horizon to the landing pad. Skip the film if you wish, review **Suit controls**, and follow Mission Control's action-led instructions: choose a seed, plant it, water it, watch it bloom and harvest. The guide waits for the corresponding action, and the prompt tells you what **Act** will do before you press it.
+
+The low Sun circles the horizon during the simulated day, moving long terrain shadows. A placement ring estimates how well the selected species fits the spot. Growth needs water; mature plants generate the oxygen that fills the dome. Shade panels change exposure, sprinklers irrigate nearby crops, and solid obstacles cannot consume a seed or tool through an invalid placement.
+
+| Species | Its role in the garden |
+| --- | --- |
+| Mooncress | A forgiving first crop for learning planting and watering. |
+| Sunleaf | A crop for exposed, sunny ground. |
+| Nightbell | A shade-loving plant for crater shadow or shade panels. |
+| Glassfern | An Earthlight species with its own light requirements. |
+| Craterbloom | A moisture-loving crop suited to reliable irrigation. |
+| Silver birch | A slower sapling supplied as the garden progresses. |
+| Selene orchid | A gift earned from the lanternfolk after your blooms attract them. |
+
+At **25%, 40%, 60% and 80% oxygen**, unlock the rover, survey caches, supply drop and suit jets. Aim to fill the dome within eighteen simulated minutes for gold. Completing it brings the Perennial arrival, first breath and medal. **Keep gardening** returns you to the same garden, with the correct landed-ship status; the rare orchid remains something you can earn and grow afterward.
+
+| Action | Keyboard / mouse | Touch |
 | --- | --- | --- |
-| Mooncress | some sun | almost anywhere: the easy first crop |
-| Sunleaf | full sun | open plains nothing shades |
-| Nightbell | deep shade | crater shadow, behind shade panels |
-| Glassfern | Earthlight | slopes facing Earth, not in full sun |
-| Craterbloom | wet ground | by the ice in the bowl, or a sprinkler |
-| Silver birch | sun and water | a sapling from the supply drop, by a sprinkler |
-| Selene orchid | a gift | from the lanternfolk |
+| Walk / lope | WASD / Shift | Left side of the screen |
+| Look / zoom | Drag / wheel | Right side of the screen |
+| Plant, water, collect, open or drive | E | Act, labelled with the current action |
+| Jump / use unlocked jets | Space / hold Space | Jump / hold Jump |
+| Select seed or tool | 1–9, Q/R | Pouch buttons |
+| Review controls | Suit controls | Suit controls |
+| Toggle sound | M or Sound | Sound |
 
-Oxygen milestones at 25%, 40%, 60% and 80% unlock the farm rover, the survey caches (follow the amber beacons), a supply drop of sprinklers and saplings, then suit jets. Fill it before the *Perennial* lands for gold; after, for silver or bronze.
+Suit controls pause movement and the mission clock. Closing them restores focus for play. The ending supports continued gardening and a fresh replay through native keyboard-accessible controls.
 
-| Input | Keyboard and mouse | Touch |
-| --- | --- | --- |
-| Walk, lope | `W A S D`, `Shift` | left half of the screen |
-| Look, zoom | drag, wheel | right half |
-| Plant, water, gather, open, drive | `E` | **Act** |
-| Jump (hold with the jets) | `Space` | **Jump** |
-| Choose a seed or tool | `1` – `9`, `Q` / `R` | tap the pouch |
-| Mute (remembered) | `M` or Sound | Sound |
-| Review controls | **Suit controls** | **Suit controls** |
+## The Moon keeps its own company
 
-## What's inside
+**Rock grazers** plant their feet on the terrain, walk around your plots, pause to watch the gardener and crop crystal lichen. The low quality tier uses a smaller herd. **Lanternfolk** drift along the crater rim and visit blooms at dusk; a gift is placed on reachable, unoccupied ground. A distant **cairn builder** adds a glowing stone when you look away.
 
-- **The real south pole.** The land around the basin is NASA's Lunar Orbiter Laser Altimeter topography of the ridge between Shackleton and de Gerlache craters, out to 146 km, with the Moon's curvature. Every point's skyline is baked in sixteen directions on the GPU, so mountains throw true shadows for wherever the Sun stands, and once a day it sinks behind the hills to the west and the basin goes blue with Earthshine.
-- **A cinematic arrival and ending.** A title shot high over the pole with Earth on the horizon, the lander's descent chased low over the craters, and at the end the *Perennial* landing, its colonists filing into the dome, and the helmet coming off.
-- **A world alive without you.** Giant lanternfolk drift in procession along the crater rim and come down at dusk to hover over your blooms; rock-shelled grazers crop crystal lichen on the floor, planting their feet and finding paths around your plots; far off on a ridge something stacks glowing cairns, one stone each time you look away.
-- **Growth you caused:** seven species with their own models and growth stages, shade panels that throw real shadows, sprinklers, a greenhouse dome whose air visibly rises, a drivable six-wheeled rover and suit jets.
-- **Mission Control teaches by doing:** a persistent action guide that waits for real planting, watering, blooming and harvesting, replayable suit controls, and a prompt that says what `E` will do before you press it.
-- **Lunar photometry:** a scanned regolith with Lommel-Seeliger shading and the opposition surge, a sun mask for the basin's long shadows, and Earth rendered live from NASA's Blue Marble with its phase following the Sun.
-- **Built to run on a laptop:** three quality tiers and a frame governor that trades resolution for smoothness.
+The wider landscape comes from NASA LOLA south-pole topography around Shackleton and de Gerlache. Baked directional skylines drive distant mountain shadows; the close basin, regolith, live Earth phase, ships and garden are drawn by direct Three.js. Separate near and far depth layers accommodate both nearby boots and distant ridges. Adaptive quality, shader preparation and finite-colour protection keep rendering bounded.
 
-## Screenshots
+## Source and release evidence
+
+[src/engine/](src/engine/) owns rendering and input; [src/game/](src/game/) owns gardening, light, oxygen and movement; [src/scene/](src/scene/) owns plants, creatures, ships and the ending; [src/ui/](src/ui/) owns the suit displays. [Asset-sourcing notes](docs/ASSET-SOURCING.md) describe the NASA terrain and imagery pipeline. CUDA is used offline for terrain preparation; the shipped browser game does not need Python or CUDA.
+
+Application revision `51ec6f6` passed **95 tests / 743 assertions** and **11 RTX 2060 scenarios**. An independent CPU route walks the authored basin and earns the unlocks. A browser route uses real controls with test-assisted travel/time to cover all seven species, landing, continued play and replay. Separate tests cover grazer feet/routing, phone layouts, focus, slow assets and failure recovery. Matched 1280×720 GPU p95 measured **8.88 ms**, versus 10.06 ms before the pass. See the [full bug-pass report](docs/visual/BUG-PASS-2026-09-30.md) for the scope and limits.
+
+## Current screenshots
 
 | Desktop | Phone |
 | --- | --- |
-| <img src="docs/readme/desktop.png" alt="The garden in bloom by the dome, the lander and rover beyond" width="560"> | <img src="docs/readme/phone.png" alt="The same garden on a phone, with the touch buttons" width="220"> |
+| <img src="docs/readme/desktop.jpg" alt="THE MOON HAS A GARDENER: current desktop opening" width="600"> | <img src="docs/readme/phone.jpg" alt="THE MOON HAS A GARDENER: current phone interface" width="240"> |
 
-## Built with
+<img src="docs/readme/detail.jpg" alt="THE MOON HAS A GARDENER: the experience after the opening" width="800">
 
-Three.js for everything in the world, React for the suit's displays, TypeScript throughout, Vite and Bun for the build; the terrain bake in Python with NVIDIA Warp (CUDA).
+<img src="docs/readme/grazer.jpg" alt="A terrain-aware rock grazer beside patches of crystal lichen" width="800">
 
-- **Two depth layers:** the sky and the far land first, with a camera whose near plane starts where the main one ends, then everything close over fresh depth, so a boot a metre away and a mountain 100 km off both render cleanly.
-- **Rules as pure, tested TypeScript** in `src/game/`: light shares traced over the same ground the renderer draws, growth, oxygen, milestones, what `E` does, the rover and the jets.
-- **Real GPU tests:** scripted rounds, the ending and the README media run in headless Chrome through the game's test hooks.
+Grazer detail from the current release's GPU verification.
 
-## Run it locally
+The opening loop and three main screenshots were captured from the live site on **1 October 2026**, using Chrome on this workstation; the phone image is a 390 × 844 browser viewport. The animated preview is a short loop, not a full playthrough. [Capture details](docs/readme/capture.json).
+
+## Run locally
+
+Use **Bun 1.3.10** (the version pinned in `package.json`) and Node.js 22.12 or newer. From this repository:
 
 ```sh
 bun install --frozen-lockfile
 bun run dev      # http://127.0.0.1:4520/
-bun run check    # tsc, Biome, bun test, production build into dist/
-bun run preview  # http://127.0.0.1:4620/
-bun run test:e2e # against preview, real Chrome / D3D11; one worker
+bun run check    # strict types, Biome, unit tests and production build
+bun run preview  # http://127.0.0.1:4620/ after the build
 ```
 
-`src/engine/` holds the renderer, ground, far land, sky and camera; `src/game/` the rules; `src/scene/` the gardener, plants, base, rover, ships and life; `src/ui/` the HUD. `tools/bake/lola.py` rebuilds the lunar terrain from the NASA sources (see `docs/ASSET-SOURCING.md`), and `scripts/readme-media.mjs` records this page's media.
+Development and preview are separate long-running commands; run one at a time or use separate terminals. `bun run build` writes the static production output to `dist/`. Dependencies and the lockfile are local to this project.
+
+### Browser suite
+
+This project's suite uses installed **Google Chrome with D3D11 on Windows** and asserts a real NVIDIA/RTX renderer. It does not start its own server. After `bun run check`, keep `bun run preview` running in one terminal, then run this in a second terminal:
+
+```sh
+bun run test:e2e
+```
+
+The suite runs with one worker. Its test hooks distinguish earned progression from assisted travel/time and isolated failure fixtures; see the verification report above.
+
+## Stack and release
+
+Direct Three.js 0.186 · React 19.3 · strict TypeScript · Vite 8.3 · GSAP 3.15 · Tailwind CSS 4.3 · Bun 1.3.10 · Biome. The public website is served by Cloudflare Workers. This README describes [application revision 51ec6f6](https://github.com/WilliamHenryKing/10-the-moon-has-a-gardener/commit/51ec6f63efb607a0641f1bf3d2b507858f7f3ea4); the documentation refresh changes no application behaviour.
 
 ## Credits
 
@@ -86,12 +102,12 @@ Audio, all **CC0** (16 files, about 1.5 MB in `public/audio/`):
 
 | File(s) | Use | Source | Author | Licence |
 | --- | --- | --- | --- | --- |
-| `music-observing-the-star.ogg` | music loop | https://opengameart.org/content/another-space-background-track | yd | CC0 |
-| `ambience-deep-space-array.ogg` | ambience loop | https://opengameart.org/content/deep-space-array | Tozan | CC0 |
-| `panel-place-1/2`, `step-1/2` | panel set down, footsteps | Impact Sounds, https://kenney.nl/assets/impact-sounds | Kenney (kenney.nl) | CC0 |
-| `panel-lift`, `denied`, `cursor`, `ui`, `grow`, `hour`, `bloom`, `wilt` | interaction and day cues | Interface Sounds, https://kenney.nl/assets/interface-sounds | Kenney (kenney.nl) | CC0 |
-| `garden-blooms`, `ending` | result and ending jingles | Music Jingles, https://kenney.nl/assets/music-jingles | Kenney (kenney.nl) | CC0 |
+| `music-observing-the-star.ogg` | music loop | [Source](https://opengameart.org/content/another-space-background-track) | yd | CC0 |
+| `ambience-deep-space-array.ogg` | ambience loop | [Source](https://opengameart.org/content/deep-space-array) | Tozan | CC0 |
+| `panel-place-1/2`, `step-1/2` | panel set down, footsteps | Impact Sounds, [Source](https://kenney.nl/assets/impact-sounds) | Kenney (kenney.nl) | CC0 |
+| `panel-lift`, `denied`, `cursor`, `ui`, `grow`, `hour`, `bloom`, `wilt` | interaction and day cues | Interface Sounds, [Source](https://kenney.nl/assets/interface-sounds) | Kenney (kenney.nl) | CC0 |
+| `garden-blooms`, `ending` | result and ending jingles | Music Jingles, [Source](https://kenney.nl/assets/music-jingles) | Kenney (kenney.nl) | CC0 |
 
 ---
 
-<p align="center"><sub>Part of William King's portfolio collection.</sub></p>
+Part of [William King's portfolio collection](https://github.com/WilliamHenryKing).
